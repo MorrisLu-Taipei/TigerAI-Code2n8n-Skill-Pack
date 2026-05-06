@@ -5,6 +5,11 @@
 > Describe what you want in plain language (like talking to a coworker), and AI generates a complete n8n workflow for you.
 > No coding required.
 
+![TigerAI n8n Skill Pack — full pipeline diagram](docs/images/tigerai-flow.png)
+
+> 📊 **The whole pack in one picture**: User writes yellow sticky notes (Layer 1 intent) → TigerAI Skill Pack brain (Cookbook + 2,061 reference workflows + DSL v1.2 + 12 skills + 4 enterprise patterns) → Three-layer workflow JSON (real n8n workflow). Three features, zero learning curve.
+> *by n8n Taipei Ambassador Morris Lu*
+
 ---
 
 ## 🤖 This is an Agentic Engineering Example
