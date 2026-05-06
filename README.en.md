@@ -164,9 +164,11 @@ Current version: see [`VERSION`](VERSION). All changes: [`CHANGELOG.md`](CHANGEL
 
 ## 📜 License
 
-- `skills/_vendor/`: MIT ([n8n-skills](https://github.com/czlonkowski/n8n-skills) project, see `skills/_vendor/LICENSE`)
-- `reference-workflows/`: from public n8n-workflows collection
-- The rest: TigerAI Proprietary (distribution terms set by your company)
+- `skills/_vendor/`: MIT — from [czlonkowski/n8n-skills](https://github.com/czlonkowski/n8n-skills), see `skills/_vendor/LICENSE`
+- `reference-workflows/`: MIT — from [Zie619/n8n-workflows](https://github.com/Zie619/n8n-workflows). API tokens, bearer tokens, and other secrets present in the original files have been replaced with placeholders (e.g. `YOUR_API_TOKEN_HERE`) before redistribution.
+- The rest (TigerAI-authored skills, cookbook, specs, docs, install scripts): **TigerAI Proprietary** (distribution terms set by your company)
+
+Full third-party notices: [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 ---
 
