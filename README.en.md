@@ -39,6 +39,32 @@ This Skill Pack is itself a working demo of **Agentic Engineering**:
 
 > 💡 In other words: this isn't just "a Skill Pack for n8n" — it's also an open **case study of how AI agents build a real product**.
 
+### 👥 You (the user) can build n8n workflows the same way
+
+**Once you install this Skill Pack, you can author your own n8n workflows with the same agentic approach** — no node syntax to learn, no code to write:
+
+| Tool | What you do | What the AI does |
+|---|---|---|
+| **Antigravity** | Open your n8n project in Antigravity, run `/install-n8n-pack`, then describe what you want in plain language | `.agent/workflows/` auto-reads your intent → emits workflow JSON → deploys via n8n API |
+| **Claude Code (CLI / VS Code)** | Run `bash install.sh` (or `install.ps1`) in your working dir, then say "I want a workflow that…" | 13 skills auto-load → three-layer workflow produced → ready to import into n8n |
+| **Any AI assistant (ChatGPT / Gemini)** | Paste an example from [`cookbook/`](cookbook/00-INDEX.en.md) as a few-shot prompt | Imitates the three-layer structure and emits a compliant workflow JSON |
+
+**Typical interaction** (30-second mental model):
+
+```text
+You ──> AI: "Every weekday 9am, pull Shopify orders, build a daily
+             report, email it to the boss; on failure post to Slack #ops"
+
+AI ──> You: ✅ workflow.json generated (Schedule → Shopify → Code → Email + Error → Slack)
+             ✅ Yellow sticky: your original requirement, preserved
+             ✅ Blue sticky: which credentials, constraints, test method
+             ✅ Deployed to your n8n via API, webhook URL: https://...
+```
+
+> 🎯 **The core idea**: Users don't need to understand n8n internals — they just need to "talk like a human" to the AI. The Skill Pack ensures the AI's output is spec-compliant, reviewable, and maintainable.
+
+See [`02-USAGE-MODES.en.md`](02-USAGE-MODES.en.md) for the three usage modes and [`03-FIRST-WORKFLOW.en.md`](03-FIRST-WORKFLOW.en.md) for a 15-minute hands-on walkthrough.
+
 ---
 
 ## 📖 Reading order (strongly recommended)

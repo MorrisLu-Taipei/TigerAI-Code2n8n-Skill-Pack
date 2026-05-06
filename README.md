@@ -39,6 +39,32 @@
 
 > 💡 換句話說：這不只是「給 n8n 用的 Skill Pack」，更是一份**「AI Agent 怎麼蓋產品」的開源教材**。
 
+### 👥 你（使用者）也可以這樣用
+
+**裝上這個 Skill Pack 之後，你就能用同樣的 Agentic 方式打造自己的 n8n workflow** —— 完全不用學 n8n 節點語法，也不用寫程式：
+
+| 工具 | 你怎麼做 | AI 幫你做什麼 |
+|---|---|---|
+| **Antigravity** | 在 Antigravity 開啟你的 n8n 專案，輸入 `/install-n8n-pack` 一鍵安裝，然後直接用自然語言描述 | 透過 `.agent/workflows/` 自動讀取需求 → 產生 workflow JSON → 透過 n8n API 部署 |
+| **Claude Code (CLI / VS Code)** | 在你的工作目錄跑 `bash install.sh`（或 `install.ps1`），然後對 Claude 說「我要一個…的 workflow」 | 13 個 Skill 自動載入 → 產出三層結構 workflow → 可直接 import n8n |
+| **任何 AI 助理（ChatGPT / Gemini）** | 把 [`cookbook/`](cookbook/00-INDEX.md) 範例貼給它當 few-shot | 模仿三層結構，產出符合規範的 workflow JSON |
+
+**典型對話流程**（30 秒理解）：
+
+```text
+你 ──> AI：「每天早上 9 點抓 Shopify 訂單，整理成日報寄給老闆，
+              失敗就在 Slack #ops 通知」
+
+AI ──> 你：✅ 已產生 workflow.json（Schedule → Shopify → Code → Email + Error → Slack）
+            ✅ 黃便利貼：保留你的原始需求
+            ✅ 藍便利貼：要設哪些 credential、限制、測試方法
+            ✅ 已透過 n8n API 部署到你的環境，webhook URL：https://...
+```
+
+> 🎯 **核心精神**：使用者不需要懂 n8n，只要會「對 AI 講人話」，就能產出企業級 workflow。Skill Pack 負責確保 AI 產出符合規範、可 review、可維護。
+
+詳見 [`02-USAGE-MODES.md`](02-USAGE-MODES.md)（三種使用方式）與 [`03-FIRST-WORKFLOW.md`](03-FIRST-WORKFLOW.md)（15 分鐘手把手）。
+
 ---
 
 ## 📖 閱讀順序（強烈建議照順序看）
