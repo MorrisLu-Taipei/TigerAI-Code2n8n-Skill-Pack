@@ -1,0 +1,248 @@
+{
+  "name": "LINE-CS / Admin / API kb-upload",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "linecs-admin-kb",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryData": true
+        }
+      },
+      "id": "kb-wh",
+      "name": "POST kb-upload",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -760,
+        0
+      ],
+      "webhookId": "linecs-admin-kb"
+    },
+    {
+      "parameters": {
+        "content": "KB upload (approach C, P2) — uploads the posted file to Supabase Storage bucket knowledge_base and returns its public URL. Uses n8n env vars (not the Supabase node credential, since this is a Storage REST call): SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, LINECS_ADMIN_TOKEN. File arrives as binary on the webhook (multipart); filename uses a timestamp prefix.",
+        "height": 300,
+        "width": 460,
+        "color": 4
+      },
+      "id": "kb-note",
+      "name": "Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -760,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "t",
+              "leftValue": "={{ ($('POST kb-upload').item.json.headers || {})['x-admin-token'] }}",
+              "rightValue": "={{ $env.LINECS_ADMIN_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "kb-auth",
+      "name": "Check admin token",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "Unauthorized",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "kb-401",
+      "name": "Respond 401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -280,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const wh=$('POST kb-upload').first(); const bin=wh.binary&&(wh.binary.file||wh.binary.data); if(!bin) throw new Error('no file in upload'); const safe=(bin.fileName||'upload.bin').replace(/[^A-Za-z0-9._-]/g,'_'); const name=Date.now()+'_'+safe; return [{ json:{ name, mimeType: bin.mimeType||'application/octet-stream' }, binary:{ data: bin } }];"
+      },
+      "id": "kb-prep",
+      "name": "Prep file",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -280,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/storage/v1/object/knowledge_base/{{ $json.name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "x-upsert",
+              "value": "true"
+            },
+            {
+              "name": "Content-Type",
+              "value": "={{ $json.mimeType }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "id": "kb-up",
+      "name": "Upload to Storage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -40,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const name=$('Prep file').first().json.name; const url=$env.SUPABASE_URL+'/storage/v1/object/public/knowledge_base/'+name; return [{ json:{ url } }];"
+      },
+      "id": "kb-url",
+      "name": "Build public URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ JSON.stringify({ url: $json.url }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "kb-resp",
+      "name": "Respond url",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        440,
+        -120
+      ]
+    }
+  ],
+  "connections": {
+    "POST kb-upload": {
+      "main": [
+        [
+          {
+            "node": "Check admin token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check admin token": {
+      "main": [
+        [
+          {
+            "node": "Prep file",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 401",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep file": {
+      "main": [
+        [
+          {
+            "node": "Upload to Storage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to Storage": {
+      "main": [
+        [
+          {
+            "node": "Build public URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build public URL": {
+      "main": [
+        [
+          {
+            "node": "Respond url",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "pinData": {}
+}

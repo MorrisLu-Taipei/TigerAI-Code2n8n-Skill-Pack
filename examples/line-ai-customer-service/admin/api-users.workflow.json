@@ -1,0 +1,340 @@
+{
+  "name": "LINE-CS / Admin / API users",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "linecs-admin-users",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "usr-get-wh",
+      "name": "GET users",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -700,
+        -120
+      ],
+      "webhookId": "linecs-admin-users"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "t",
+              "leftValue": "={{ ($('GET users').item.json.headers || {})['x-admin-token'] }}",
+              "rightValue": "={{ $env.LINECS_ADMIN_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "usrget-auth",
+      "name": "Check admin token",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -460,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "Unauthorized",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "usrget-401",
+      "name": "Respond 401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -220,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "getAll",
+        "tableId": "user_states",
+        "returnAll": false,
+        "limit": 50
+      },
+      "id": "usr-get-db",
+      "name": "Read user_states",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -220,
+        -200
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_SUPABASE_CRED_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ JSON.stringify($input.all().map(i => i.json)) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "usr-get-resp",
+      "name": "Respond users",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        20,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "linecs-admin-takeover",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "usr-tk-wh",
+      "name": "POST takeover",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -700,
+        220
+      ],
+      "webhookId": "linecs-admin-takeover"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "t",
+              "leftValue": "={{ ($('POST takeover').item.json.headers || {})['x-admin-token'] }}",
+              "rightValue": "={{ $env.LINECS_ADMIN_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "usrtk-auth",
+      "name": "Check admin token1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -460,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "Unauthorized",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "usrtk-401",
+      "name": "Respond 4011",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -220,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "update",
+        "tableId": "user_states",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "line_user_id",
+              "condition": "eq",
+              "keyValue": "={{ $('POST takeover').item.json.body.line_user_id }}"
+            }
+          ]
+        },
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "is_human_mode",
+              "fieldValue": "={{ $('POST takeover').item.json.body.is_human_mode }}"
+            },
+            {
+              "fieldId": "last_human_interaction",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        }
+      },
+      "id": "usr-tk-db",
+      "name": "Update user_states",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -220,
+        160
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_SUPABASE_CRED_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "usr-tk-resp",
+      "name": "Respond takeover",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        20,
+        160
+      ]
+    }
+  ],
+  "connections": {
+    "GET users": {
+      "main": [
+        [
+          {
+            "node": "Check admin token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check admin token": {
+      "main": [
+        [
+          {
+            "node": "Read user_states",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 401",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read user_states": {
+      "main": [
+        [
+          {
+            "node": "Respond users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST takeover": {
+      "main": [
+        [
+          {
+            "node": "Check admin token1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check admin token1": {
+      "main": [
+        [
+          {
+            "node": "Update user_states",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 4011",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update user_states": {
+      "main": [
+        [
+          {
+            "node": "Respond takeover",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "pinData": {}
+}

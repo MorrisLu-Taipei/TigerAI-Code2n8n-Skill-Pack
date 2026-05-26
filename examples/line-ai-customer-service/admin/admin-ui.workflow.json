@@ -1,0 +1,104 @@
+{
+  "name": "LINE-CS / Admin / UI (approach C)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "linecs-admin",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "ui-wh",
+      "name": "GET /linecs-admin",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -600,
+        0
+      ],
+      "webhookId": "linecs-admin-ui"
+    },
+    {
+      "parameters": {
+        "content": "Admin UI (approach C) — serves the single-file dashboard via Respond to Webhook (text/html). The page calls sibling webhooks linecs-admin-settings / -settings-save / -users / -takeover / -kb. Parent project ports scorpioliu0953/ai_customer_service; this admin layer = approach C from FRONTEND-SDD.md. Set n8n env LINECS_ADMIN_TOKEN — every data API checks header X-Admin-Token against it.",
+        "height": 280,
+        "width": 460,
+        "color": 4
+      },
+      "id": "ui-note",
+      "name": "Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -600,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { html: \"<!DOCTYPE html><html lang='zh-Hant'><head><meta charset='utf-8'>\\n<meta name='viewport' content='width=device-width,initial-scale=1'><title>LINE-CS Admin</title>\\n<style>\\nbody{font-family:system-ui,'Noto Sans TC',sans-serif;background:#0f172a;color:#e2e8f0;margin:0;padding:1rem;max-width:900px;margin-inline:auto}\\nh2{border-bottom:1px solid #334155;padding-bottom:.3rem;margin-top:1.6rem}\\ninput,textarea,select{width:100%;box-sizing:border-box;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:.5rem;margin:.15rem 0 .6rem}\\nbutton{background:#2563eb;color:#fff;border:0;border-radius:6px;padding:.5rem 1rem;cursor:pointer;font-size:.9rem}\\nbutton.sec{background:#475569}\\ntable{width:100%;border-collapse:collapse;font-size:.88rem}\\ntd,th{border-bottom:1px solid #334155;padding:.4rem;text-align:left}\\n.row{display:flex;gap:.6rem;flex-wrap:wrap}.row>div{flex:1;min-width:180px}\\n.hide{display:none}label{font-size:.82rem;color:#94a3b8}.msg{color:#34d399;font-size:.85rem}\\n.note{color:#64748b;font-size:.78rem;margin:.2rem 0 1rem}\\n</style></head><body>\\n<h1>LINE AI 客服 — 管理台</h1>\\n<p class='note'>approach C：本頁由 n8n Webhook 直接吐出（Respond to Webhook，text/html）。資料 API 也是 n8n webhook。參考來源：scorpioliu0953/ai_customer_service。</p>\\n<div id='gate'>\\n  <h2>登入</h2>\\n  <label>Admin Token（對應 n8n env LINECS_ADMIN_TOKEN）</label>\\n  <input id='tok' type='password' placeholder='輸入管理 token'>\\n  <button onclick='login()'>進入</button>\\n</div>\\n<div id='app' class='hide'>\\n  <h2>設定 Settings</h2>\\n  <div class='row'>\\n    <div><label>AI 啟用</label><select id='is_ai_enabled'><option value='true'>是</option><option value='false'>否</option></select></div>\\n    <div><label>使用模型</label><select id='active_ai'><option value='gpt'>GPT</option><option value='gemini'>Gemini</option></select></div>\\n  </div>\\n  <label>System Prompt</label><textarea id='system_prompt' rows='3'></textarea>\\n  <label>參考文字 reference_text</label><textarea id='reference_text' rows='2'></textarea>\\n  <div class='row'>\\n    <div><label>GPT model</label><input id='gpt_model_name'></div>\\n    <div><label>GPT api key</label><input id='gpt_api_key' type='password'></div>\\n  </div>\\n  <div class='row'>\\n    <div><label>Gemini model</label><input id='gemini_model_name'></div>\\n    <div><label>Gemini api key</label><input id='gemini_api_key' type='password'></div>\\n  </div>\\n  <label>轉真人關鍵字（逗號分隔）</label><input id='handover_keywords'>\\n  <div class='row'>\\n    <div><label>逾時(分)</label><input id='handover_timeout_minutes'></div>\\n    <div><label>專員 userIds（逗號分隔）</label><input id='agent_user_ids'></div>\\n  </div>\\n  <div class='row'>\\n    <div><label>LINE channel access token</label><input id='line_channel_access_token' type='password'></div>\\n    <div><label>LINE channel secret</label><input id='line_channel_secret' type='password'></div>\\n  </div>\\n  <button onclick='saveSettings()'>儲存設定</button> <span id='smsg' class='msg'></span>\\n\\n  <h2>用戶 Users <button class='sec' onclick='loadUsers()'>刷新</button></h2>\\n  <table><thead><tr><th>userId</th><th>暱稱</th><th>真人模式</th><th>最後互動</th><th>動作</th></tr></thead><tbody id='users'></tbody></table>\\n\\n  <h2>知識庫 Knowledge base</h2>\\n  <p class='note'>上傳後請把回傳的 URL 填到上方（或由 api-kb 自動回填 settings.reference_file_url）。</p>\\n  <input id='kbfile' type='file'>\\n  <button onclick='uploadKb()'>上傳</button> <span id='kbmsg' class='msg'></span>\\n</div>\\n<script>\\nvar P=location.pathname;\\nfunction ep(name){return location.origin+P.replace(/linecs-admin$/, 'linecs-admin-'+name)}\\nvar TOK=sessionStorage.linecsTok||'';\\nfunction H(){return {'Content-Type':'application/json','X-Admin-Token':TOK}}\\nfunction login(){TOK=document.getElementById('tok').value;sessionStorage.linecsTok=TOK;loadSettings()}\\nvar FIELDS=['system_prompt','reference_text','gpt_model_name','gpt_api_key','gemini_model_name','gemini_api_key','handover_keywords','agent_user_ids','line_channel_access_token','line_channel_secret'];\\nfunction loadSettings(){\\n  fetch(ep('settings'),{headers:H()}).then(function(r){\\n    if(r.status===401){alert('Token 錯誤');return null}\\n    return r.json();\\n  }).then(function(s){\\n    if(!s)return;\\n    document.getElementById('gate').classList.add('hide');\\n    document.getElementById('app').classList.remove('hide');\\n    FIELDS.forEach(function(k){var el=document.getElementById(k);if(el)el.value=s[k]||''});\\n    document.getElementById('is_ai_enabled').value=String(s.is_ai_enabled);\\n    document.getElementById('active_ai').value=s.active_ai||'gpt';\\n    document.getElementById('handover_timeout_minutes').value=s.handover_timeout_minutes||30;\\n    loadUsers();\\n  });\\n}\\nfunction saveSettings(){\\n  var b={};FIELDS.forEach(function(k){b[k]=document.getElementById(k).value});\\n  b.active_ai=document.getElementById('active_ai').value;\\n  b.is_ai_enabled=document.getElementById('is_ai_enabled').value==='true';\\n  b.handover_timeout_minutes=parseInt(document.getElementById('handover_timeout_minutes').value||'30',10);\\n  fetch(ep('settings-save'),{method:'POST',headers:H(),body:JSON.stringify(b)}).then(function(r){\\n    document.getElementById('smsg').textContent=r.ok?'已儲存 ✓':'失敗';\\n  });\\n}\\nfunction loadUsers(){\\n  fetch(ep('users'),{headers:H()}).then(function(r){return r.json()}).then(function(rows){\\n    var tb=document.getElementById('users');tb.innerHTML='';\\n    (rows||[]).forEach(function(u){\\n      var tr=document.createElement('tr');\\n      tr.innerHTML='<td>'+(u.line_user_id||'')+'</td><td>'+(u.nickname||'')+'</td><td>'+(u.is_human_mode?'是':'')+'</td><td>'+(u.last_human_interaction||'')+'</td>';\\n      var td=document.createElement('td');var btn=document.createElement('button');\\n      btn.textContent=u.is_human_mode?'放回 AI':'接手';btn.className='sec';\\n      btn.onclick=function(){takeover(u.line_user_id,!u.is_human_mode)};\\n      td.appendChild(btn);tr.appendChild(td);tb.appendChild(tr);\\n    });\\n  });\\n}\\nfunction takeover(id,human){\\n  fetch(ep('takeover'),{method:'POST',headers:H(),body:JSON.stringify({line_user_id:id,is_human_mode:human})}).then(loadUsers);\\n}\\nfunction uploadKb(){\\n  var f=document.getElementById('kbfile').files[0];if(!f){alert('請先選檔');return}\\n  var fd=new FormData();fd.append('file',f);\\n  fetch(ep('kb'),{method:'POST',headers:{'X-Admin-Token':TOK},body:fd}).then(function(r){return r.json()}).then(function(j){\\n    document.getElementById('kbmsg').textContent=j&&j.url?('已上傳 ✓ '+j.url):'失敗';\\n  });\\n}\\nif(TOK)loadSettings();\\n</script></body></html>\" } }];"
+      },
+      "id": "ui-html",
+      "name": "Build dashboard.html",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -360,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "ui-resp",
+      "name": "Respond HTML",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -120,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "GET /linecs-admin": {
+      "main": [
+        [
+          {
+            "node": "Build dashboard.html",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build dashboard.html": {
+      "main": [
+        [
+          {
+            "node": "Respond HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "pinData": {}
+}

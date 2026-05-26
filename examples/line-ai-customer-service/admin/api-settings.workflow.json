@@ -1,0 +1,418 @@
+{
+  "name": "LINE-CS / Admin / API settings",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "linecs-admin-settings",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "set-get-wh",
+      "name": "GET settings",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -700,
+        -120
+      ],
+      "webhookId": "linecs-admin-settings-get"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "t",
+              "leftValue": "={{ ($('GET settings').item.json.headers || {})['x-admin-token'] }}",
+              "rightValue": "={{ $env.LINECS_ADMIN_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "setget-auth",
+      "name": "Check admin token",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -460,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "Unauthorized",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "setget-401",
+      "name": "Respond 401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -220,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "getAll",
+        "tableId": "settings",
+        "returnAll": false,
+        "limit": 1
+      },
+      "id": "set-get-db",
+      "name": "Read settings",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -220,
+        -200
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_SUPABASE_CRED_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "set-get-resp",
+      "name": "Respond settings",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        20,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "linecs-admin-settings-save",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "set-save-wh",
+      "name": "POST settings-save",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -700,
+        220
+      ],
+      "webhookId": "linecs-admin-settings-save"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "t",
+              "leftValue": "={{ ($('POST settings-save').item.json.headers || {})['x-admin-token'] }}",
+              "rightValue": "={{ $env.LINECS_ADMIN_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "setsave-auth",
+      "name": "Check admin token1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -460,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "Unauthorized",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "setsave-401",
+      "name": "Respond 4011",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -220,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "getAll",
+        "tableId": "settings",
+        "returnAll": false,
+        "limit": 1
+      },
+      "id": "set-save-id",
+      "name": "Get settings id",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -220,
+        160
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_SUPABASE_CRED_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "update",
+        "tableId": "settings",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "is_ai_enabled",
+              "fieldValue": "={{ $('POST settings-save').item.json.body['is_ai_enabled'] }}"
+            },
+            {
+              "fieldId": "active_ai",
+              "fieldValue": "={{ $('POST settings-save').item.json.body['active_ai'] }}"
+            },
+            {
+              "fieldId": "gpt_api_key",
+              "fieldValue": "={{ $('POST settings-save').item.json.body['gpt_api_key'] }}"
+            },
+            {
+              "fieldId": "gpt_model_name",
+              "fieldValue": "={{ $('POST settings-save').item.json.body['gpt_model_name'] }}"
+            },
+            {
+              "fieldId": "gemini_api_key",
+              "fieldValue": "={{ $('POST settings-save').item.json.body['gemini_api_key'] }}"
+            },
+            {
+              "fieldId": "gemini_model_name",
+              "fieldValue": "={{ $('POST settings-save').item.json.body['gemini_model_name'] }}"
+            },
+            {
+              "fieldId": "system_prompt",
+              "fieldValue": "={{ $('POST settings-save').item.json.body['system_prompt'] }}"
+            },
+            {
+              "fieldId": "reference_text",
+              "fieldValue": "={{ $('POST settings-save').item.json.body['reference_text'] }}"
+            },
+            {
+              "fieldId": "handover_keywords",
+              "fieldValue": "={{ $('POST settings-save').item.json.body['handover_keywords'] }}"
+            },
+            {
+              "fieldId": "handover_timeout_minutes",
+              "fieldValue": "={{ $('POST settings-save').item.json.body['handover_timeout_minutes'] }}"
+            },
+            {
+              "fieldId": "agent_user_ids",
+              "fieldValue": "={{ $('POST settings-save').item.json.body['agent_user_ids'] }}"
+            },
+            {
+              "fieldId": "line_channel_access_token",
+              "fieldValue": "={{ $('POST settings-save').item.json.body['line_channel_access_token'] }}"
+            },
+            {
+              "fieldId": "line_channel_secret",
+              "fieldValue": "={{ $('POST settings-save').item.json.body['line_channel_secret'] }}"
+            }
+          ]
+        }
+      },
+      "id": "set-save-db",
+      "name": "Update settings",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        20,
+        160
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_SUPABASE_CRED_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "set-save-resp",
+      "name": "Respond saved",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        260,
+        160
+      ]
+    }
+  ],
+  "connections": {
+    "GET settings": {
+      "main": [
+        [
+          {
+            "node": "Check admin token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check admin token": {
+      "main": [
+        [
+          {
+            "node": "Read settings",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 401",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read settings": {
+      "main": [
+        [
+          {
+            "node": "Respond settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST settings-save": {
+      "main": [
+        [
+          {
+            "node": "Check admin token1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check admin token1": {
+      "main": [
+        [
+          {
+            "node": "Get settings id",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 4011",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get settings id": {
+      "main": [
+        [
+          {
+            "node": "Update settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update settings": {
+      "main": [
+        [
+          {
+            "node": "Respond saved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "pinData": {}
+}

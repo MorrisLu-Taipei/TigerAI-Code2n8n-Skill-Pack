@@ -1,0 +1,134 @@
+{
+  "name": "LINE-CS / Entry / LINE",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "line-webhook",
+        "responseMode": "responseNode",
+        "options": { "rawBody": true }
+      },
+      "id": "webhook",
+      "name": "LINE Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-1000, 0],
+      "webhookId": "line-cs-webhook"
+    },
+    {
+      "parameters": {
+        "content": "## LINE entry — webhook + signature + fan-out\n\n1. **LINE Webhook** — `POST /line-webhook`, **Raw Body ON** (required for signature).\n2. Read `settings` (for channel secret + access token).\n3. **Verify signature** — HMAC-SHA256(rawBody, channel_secret) base64 == `x-line-signature`.\n   - Uses `require('crypto')` → self-hosted n8n must allow it:\n     `NODE_FUNCTION_ALLOW_BUILTIN=crypto` (or `*`) in the n8n env.\n4. Valid → Respond 200 immediately, then fan out each text event → call core.\n   Invalid → Respond 401.\n\nLINE may retry on non-200; the core's dedup (processed_events PK) makes retries safe.\n\nReply token TTL ≈ 1 min, so respond 200 fast and let the core reply async.",
+        "height": 380,
+        "width": 520,
+        "color": 4
+      },
+      "id": "sticky",
+      "name": "Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1000, 220]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "getAll",
+        "tableId": "settings",
+        "returnAll": false,
+        "limit": 1
+      },
+      "id": "read-settings",
+      "name": "Read settings",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-760, 0],
+      "credentials": { "supabaseApi": { "id": "REPLACE_SUPABASE_CRED_ID", "name": "Supabase account" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verify LINE signature over the RAW request body, then parse + filter events.\n// Requires the Webhook node 'Raw Body' option ON, and n8n env\n// NODE_FUNCTION_ALLOW_BUILTIN=crypto (or *) so require('crypto') works.\nconst crypto = require('crypto');\n\nconst wh = $('LINE Webhook').first();\nconst settings = $input.first().json;\n\n// --- raw body string ---\nlet raw = '';\nif (wh.binary && wh.binary.data && wh.binary.data.data) {\n  raw = Buffer.from(wh.binary.data.data, 'base64').toString('utf8');\n} else if (typeof wh.json.body === 'string') {\n  raw = wh.json.body;\n} else {\n  // Fallback (will only match if body had no insignificant whitespace) — enable Raw Body!\n  raw = JSON.stringify(wh.json.body || {});\n}\n\nconst signature = (wh.json.headers || {})['x-line-signature'] || '';\nconst expected = crypto\n  .createHmac('SHA256', settings.line_channel_secret || '')\n  .update(raw)\n  .digest('base64');\n\nconst valid = !!signature && signature === expected;\n\nlet events = [];\nif (valid) {\n  let parsed = {};\n  try { parsed = JSON.parse(raw); } catch (e) {}\n  events = (parsed.events || [])\n    .filter(ev => ev.type === 'message' && ev.message && ev.message.type === 'text')\n    .map(ev => ({\n      userId: ev.source && ev.source.userId,\n      text: (ev.message.text || '').trim(),\n      eventId: ev.webhookEventId,\n      replyToken: ev.replyToken\n    }))\n    .filter(e => e.userId && e.text && e.eventId);\n}\n\nreturn [{ json: { valid, events, settings } }];\n"
+      },
+      "id": "verify",
+      "name": "Verify signature + parse",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-520, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
+          "conditions": [
+            { "id": "v", "leftValue": "={{ $json.valid }}", "rightValue": "", "operator": { "type": "boolean", "operation": "true", "singleValue": true } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-valid",
+      "name": "Signature valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-280, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK",
+        "options": { "responseCode": 200 }
+      },
+      "id": "respond-200",
+      "name": "Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-40, -120]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "Invalid signature",
+        "options": { "responseCode": 401 }
+      },
+      "id": "respond-401",
+      "name": "Respond 401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-40, 120]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fan out one item per text event for the core sub-workflow.\nconst { events, settings } = $json;\nif (!events || !events.length) return [];\nreturn events.map(event => ({ json: { event, settings } }));\n"
+      },
+      "id": "fanout",
+      "name": "Fan out events",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [200, -120]
+    },
+    {
+      "parameters": {
+        "workflowId": { "__rl": true, "value": "REPLACE_WITH_CORE_MESSAGE_ROUTER_WORKFLOW_ID", "mode": "id" },
+        "workflowInputs": { "mappingMode": "passThrough" },
+        "options": { "waitForSubWorkflow": false }
+      },
+      "id": "call-core",
+      "name": "Call core (per event)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [440, -120]
+    }
+  ],
+  "connections": {
+    "LINE Webhook":              { "main": [[{ "node": "Read settings", "type": "main", "index": 0 }]] },
+    "Read settings":             { "main": [[{ "node": "Verify signature + parse", "type": "main", "index": 0 }]] },
+    "Verify signature + parse":  { "main": [[{ "node": "Signature valid?", "type": "main", "index": 0 }]] },
+    "Signature valid?":          { "main": [
+                                    [{ "node": "Respond 200", "type": "main", "index": 0 }],
+                                    [{ "node": "Respond 401", "type": "main", "index": 0 }]
+                                  ] },
+    "Respond 200":               { "main": [[{ "node": "Fan out events", "type": "main", "index": 0 }]] },
+    "Fan out events":            { "main": [[{ "node": "Call core (per event)", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "active": false,
+  "pinData": {}
+}

@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.19.0 — 新增 LINE AI 客服 n8n 移植範例 + Google Workspace 逐行出處
+
+**新範例：[`examples/line-ai-customer-service/`](examples/line-ai-customer-service/)**
+
+把 [scorpioliu0953/ai_customer_service](https://github.com/scorpioliu0953/ai_customer_service)（Netlify + React + Supabase + GPT/Gemini）的 **後端 webhook** 移植到 n8n，前端管理台用 approach C（n8n 自托管 UI）實作。
+
+- **後端 runtime**：`core/core-message-router`（去重 / 關鍵字轉真人 / 真人模式逾時 / GPT or Gemini / 回覆）+ `entry-line`（webhook + raw-body HMAC-SHA256 簽章驗證 + 拆 event），1:1 對應上游 `line-webhook.ts` 175 行
+- **前端管理台（approach C）**：4 條 admin workflow（`admin-ui` 吐單檔 HTML 儀表板 + `api-settings` / `api-users` / `api-kb`），整套含 UI 跑在 n8n、零外部主機；HTML 由 `admin/_build_admin.mjs` 產生避免手工跳脫
+- **只需 1 個 n8n credential（Supabase）**：LINE / OpenAI / Gemini 金鑰沿用上游存在 DB settings 表的設計，從 DB 讀塞進 HTTP header
+- **計畫書**：`SDD.md`（整體移植 + 可行性評估，誠實標明「後端可移植、React 儀表板不可移植」）+ `FRONTEND-SDD.md`（approach C 設計）
+- 雷點都寫進文件：LINE 簽章需 raw body、自托管需 `NODE_FUNCTION_ALLOW_BUILTIN=crypto`、reply token ~1 分鐘失效、無原生 LINE/Gemini 節點
+
+**Google Workspace 範例補強：逐行出處**
+
+- 新增 [`examples/google-workspace-admin-workflow/PROVENANCE.md`](examples/google-workspace-admin-workflow/PROVENANCE.md)：每塊保真資料釘到上游 `src/Code.gs` @ `fce2513` 的**確切行號**（11 子資料夾 / 9 Doc 標題 / T001–T010 / 10 檢核項 / 5 提醒偏移 / 14 日期類型 / sheet headers）
+- 在 3 個 core workflow 的 `Prepare`/overview 加 inline 出處標記（`<- Code.gs:Lxxx`），n8n UI 開節點即見來源
+
+**驗證**：兩個範例都過 `_audit.mjs` 靜態 lint（0/0）+ 本機 n8n REST import（GW 7/7、LINE 6/6 accepted）。
+
 ## v0.18.0 — 新增 Google Workspace 行政專案 n8n 移植範例
 
 **新範例：[`examples/google-workspace-admin-workflow/`](examples/google-workspace-admin-workflow/)**

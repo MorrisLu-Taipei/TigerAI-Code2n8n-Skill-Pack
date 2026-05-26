@@ -1,0 +1,547 @@
+{
+  "name": "LINE-CS / Core / Message Router",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "When Called",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [-1360, 0]
+    },
+    {
+      "parameters": {
+        "content": "## LINE-CS — Core Message Router\n\nInput from `entry-line`: one item per LINE text event:\n```\n{\n  event: { userId, text, eventId, replyToken },\n  settings: { ...all settings columns from Supabase... }\n}\n```\n\nPorted 1:1 from `netlify/functions/line-webhook.ts` (mihozip → scorpioliu0953/ai_customer_service).\n\nFlow:\n1. Dedup — insert processed_events(event_id); PK conflict → skip (duplicate retry)\n2. Read user_states[userId]\n3. Keyword detection → human handover (reply + agent push + flag is_human_mode)\n4. Human-mode + timeout check (inline lazy revert, matches original)\n5. is_ai_enabled gate\n6. GPT (chat / o-series / gpt-5 Responses) or Gemini\n7. Reply AI text\n\n**Only n8n credential needed = Supabase.** All LINE / OpenAI / Gemini calls are HTTP Request with keys read from the `settings` row (same as the original — keys live in DB so the dashboard can edit them).",
+        "height": 620,
+        "width": 560,
+        "color": 4
+      },
+      "id": "sticky-overview",
+      "name": "Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1360, 220]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "create",
+        "tableId": "processed_events",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "event_id", "fieldValue": "={{ $json.event.eventId }}" }
+          ]
+        }
+      },
+      "id": "dedup",
+      "name": "Dedup (insert processed_events)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-1120, 0],
+      "credentials": { "supabaseApi": { "id": "REPLACE_SUPABASE_CRED_ID", "name": "Supabase account" } },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "content": "### Dedup error output = duplicate\n\nPK conflict on `event_id` means LINE re-sent this event (retry). The error output is a dead-end NoOp — we intentionally do nothing so we never double-reply or roll back state. Matches `if (eventError) continue;` in the original.",
+        "height": 200,
+        "width": 360,
+        "color": 3
+      },
+      "id": "sticky-dedup",
+      "name": "Why error output",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1120, -260]
+    },
+    {
+      "parameters": {},
+      "id": "dup-skip",
+      "name": "Duplicate → skip",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [-880, -160]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "getAll",
+        "tableId": "user_states",
+        "returnAll": false,
+        "limit": 1,
+        "filters": {
+          "conditions": [
+            { "keyName": "line_user_id", "condition": "eq", "keyValue": "={{ $('When Called').item.json.event.userId }}" }
+          ]
+        }
+      },
+      "id": "read-state",
+      "name": "Read user_states",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-880, 0],
+      "credentials": { "supabaseApi": { "id": "REPLACE_SUPABASE_CRED_ID", "name": "Supabase account" } },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Assemble state + run keyword detection (ported from line-webhook.ts L52-62).\nconst { event, settings } = $('When Called').first().json;\nconst rows = $input.all();\nconst userState = (rows.length && rows[0].json && rows[0].json.line_user_id) ? rows[0].json : null;\n\nconst userMessage = String(event.text || '').trim();\nconst handoverKeywords = (settings.handover_keywords || '')\n  .replace(/，/g, ',')\n  .split(',')\n  .map(k => k.trim())\n  .filter(k => k.length > 0);\n\nconst matchedKeyword = handoverKeywords.find(k => {\n  if (k.length === 1) return userMessage === k;   // single char: exact match\n  return userMessage.includes(k);                  // multi char: substring\n}) || null;\n\nreturn [{ json: { event, settings, userState, userMessage, matchedKeyword } }];\n"
+      },
+      "id": "detect",
+      "name": "Detect keyword + state",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-640, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
+          "conditions": [
+            { "id": "kw", "leftValue": "={{ $json.matchedKeyword }}", "rightValue": "", "operator": { "type": "string", "operation": "exists", "singleValue": true } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-handover",
+      "name": "Handover keyword?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-400, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.line.me/v2/bot/profile/{{ $json.event.userId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $json.settings.line_channel_access_token }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-profile",
+      "name": "Get LINE profile",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-160, -200],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Resolve nickname + decide update vs create for user_states.\nconst base = $('Detect keyword + state').first().json;\nconst profile = $input.first().json || {};\nconst nickname = profile.displayName || (base.userState && base.userState.nickname) || '匿名用戶';\nconst now = new Date().toISOString();\nreturn [{ json: { ...base, nickname, nowIso: now, userExists: !!base.userState } }];\n"
+      },
+      "id": "handover-prep",
+      "name": "Handover prep",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [80, -200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
+          "conditions": [
+            { "id": "ex", "leftValue": "={{ $json.userExists }}", "rightValue": "", "operator": { "type": "boolean", "operation": "true", "singleValue": true } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-user-exists",
+      "name": "user_states exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [320, -200]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "update",
+        "tableId": "user_states",
+        "filters": {
+          "conditions": [
+            { "keyName": "line_user_id", "condition": "eq", "keyValue": "={{ $json.event.userId }}" }
+          ]
+        },
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "nickname", "fieldValue": "={{ $json.nickname }}" },
+            { "fieldId": "is_human_mode", "fieldValue": "={{ true }}" },
+            { "fieldId": "last_human_interaction", "fieldValue": "={{ $json.nowIso }}" }
+          ]
+        }
+      },
+      "id": "state-update",
+      "name": "Update user_states (human)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [560, -320],
+      "credentials": { "supabaseApi": { "id": "REPLACE_SUPABASE_CRED_ID", "name": "Supabase account" } }
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "create",
+        "tableId": "user_states",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "line_user_id", "fieldValue": "={{ $json.event.userId }}" },
+            { "fieldId": "nickname", "fieldValue": "={{ $json.nickname }}" },
+            { "fieldId": "is_human_mode", "fieldValue": "={{ true }}" },
+            { "fieldId": "last_human_interaction", "fieldValue": "={{ $json.nowIso }}" }
+          ]
+        }
+      },
+      "id": "state-create",
+      "name": "Create user_states (human)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [560, -120],
+      "credentials": { "supabaseApi": { "id": "REPLACE_SUPABASE_CRED_ID", "name": "Supabase account" } }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/reply",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $('Handover prep').item.json.settings.line_channel_access_token }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"replyToken\": {{ JSON.stringify($('Handover prep').item.json.event.replyToken) }},\n  \"messages\": [{ \"type\": \"text\", \"text\": \"已為您轉接真人客服，請稍候。\" }]\n}",
+        "options": {}
+      },
+      "id": "reply-handover",
+      "name": "Reply 已轉接真人",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, -200],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fan out one item per agent in agent_user_ids (comma separated).\nconst base = $('Handover prep').first().json;\nconst agentIds = (base.settings.agent_user_ids || '')\n  .split(',').map(s => s.trim()).filter(Boolean);\nif (!agentIds.length) return [];\nreturn agentIds.map(id => ({ json: { ...base, agentId: id } }));\n"
+      },
+      "id": "fanout-agents",
+      "name": "Fan out agents",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, -200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $json.settings.line_channel_access_token }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"to\": {{ JSON.stringify($json.agentId) }},\n  \"messages\": [{ \"type\": \"text\", \"text\": {{ JSON.stringify('🔔 真人通知：【' + $json.nickname + '】正在呼叫專人。\\n觸發字：' + $json.matchedKeyword + '\\n原文：' + $json.userMessage) }} }]\n}",
+        "options": {}
+      },
+      "id": "push-agents",
+      "name": "Push to agents",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1280, -200],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Inline human-mode + timeout check (ported from line-webhook.ts L87-96).\nconst base = $('Detect keyword + state').first().json;\nconst { settings, userState } = base;\nlet action = 'ai';      // ai | silent\nlet needsRevert = false;\nif (userState && userState.is_human_mode) {\n  const last = new Date(userState.last_human_interaction).getTime();\n  const timeoutMs = (Number(settings.handover_timeout_minutes) || 30) * 60 * 1000;\n  if (Date.now() - last < timeoutMs) {\n    action = 'silent';     // still within human window → do not reply with AI\n  } else {\n    needsRevert = true;    // expired → revert to AI and continue\n  }\n}\nif (!settings.is_ai_enabled) action = 'silent';\nreturn [{ json: { ...base, action, needsRevert } }];\n"
+      },
+      "id": "mode-check",
+      "name": "Human-mode + timeout",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-160, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
+          "conditions": [
+            { "id": "ai", "leftValue": "={{ $json.action }}", "rightValue": "ai", "operator": { "type": "string", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-proceed-ai",
+      "name": "Proceed to AI?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [80, 200]
+    },
+    {
+      "parameters": {},
+      "id": "silent-skip",
+      "name": "Silent (human mode)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [320, 360]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
+          "conditions": [
+            { "id": "rv", "leftValue": "={{ $json.needsRevert }}", "rightValue": "", "operator": { "type": "boolean", "operation": "true", "singleValue": true } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-revert",
+      "name": "Needs revert?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [320, 200]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "update",
+        "tableId": "user_states",
+        "filters": {
+          "conditions": [
+            { "keyName": "line_user_id", "condition": "eq", "keyValue": "={{ $json.event.userId }}" }
+          ]
+        },
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "is_human_mode", "fieldValue": "={{ false }}" }
+          ]
+        }
+      },
+      "id": "revert-state",
+      "name": "Revert is_human_mode=false",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [560, 100],
+      "credentials": { "supabaseApi": { "id": "REPLACE_SUPABASE_CRED_ID", "name": "Supabase account" } },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            { "conditions": { "options": { "caseSensitive": true, "typeValidation": "loose", "version": 2 }, "conditions": [ { "leftValue": "={{ $('Detect keyword + state').item.json.settings.active_ai }}", "rightValue": "gpt", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }, "outputKey": "gpt" },
+            { "conditions": { "options": { "caseSensitive": true, "typeValidation": "loose", "version": 2 }, "conditions": [ { "leftValue": "={{ $('Detect keyword + state').item.json.settings.active_ai }}", "rightValue": "gpt", "operator": { "type": "string", "operation": "notEquals" } } ], "combinator": "and" }, "outputKey": "gemini" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "switch-ai",
+      "name": "GPT or Gemini?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [560, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Detect keyword + state').item.json.settings.reference_file_url || 'https://example.invalid/none' }}",
+        "options": { "response": { "response": { "neverError": true, "responseFormat": "text" } } }
+      },
+      "id": "load-ref-gpt",
+      "name": "Load reference (text)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 200],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build the right OpenAI request by model family (ported from callGPT L114-149).\nconst base = $('Detect keyword + state').first().json;\nconst s = base.settings;\nconst fileText = (typeof $input.first().json.data === 'string') ? $input.first().json.data\n               : (typeof $input.first().json.body === 'string' ? $input.first().json.body : '');\nconst systemContent = `${s.system_prompt}\\n\\n參考文字：\\n${s.reference_text || ''}\\n\\n檔案內容：\\n${fileText || ''}`;\nconst model = s.gpt_model_name || 'gpt-4.1-mini';\nlet url, body;\nif (model.includes('gpt-5')) {\n  url = 'https://api.openai.com/v1/responses';\n  body = {\n    model,\n    input: `System: ${systemContent}\\nUser: ${base.userMessage}`,\n    reasoning: { effort: s.gpt_reasoning_effort || 'none' },\n    text: { verbosity: s.gpt_verbosity || 'medium' }\n  };\n} else {\n  url = 'https://api.openai.com/v1/chat/completions';\n  body = { model, messages: [ { role: 'system', content: systemContent }, { role: 'user', content: base.userMessage } ] };\n  if (model.startsWith('o1') || model.startsWith('o3')) {\n    body.max_completion_tokens = s.gpt_max_tokens;\n  } else {\n    body.max_tokens = s.gpt_max_tokens;\n    body.temperature = s.gpt_temperature;\n  }\n}\nreturn [{ json: { ...base, _openaiUrl: url, _openaiBody: body, _apiKey: s.gpt_api_key } }];\n"
+      },
+      "id": "build-gpt",
+      "name": "Build GPT request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json._openaiUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $json._apiKey }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._openaiBody) }}",
+        "options": {}
+      },
+      "id": "call-gpt",
+      "name": "Call OpenAI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1280, 200],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalize OpenAI response (Responses API vs chat completions).\nconst base = $('Build GPT request').first().json;\nconst r = $input.first().json || {};\nlet text = '';\nif (r.output && r.output.text) text = r.output.text;                       // /v1/responses\nelse if (Array.isArray(r.output)) {                                         // responses array form\n  const msg = r.output.find(o => o.content);\n  if (msg) text = (msg.content.find(c => c.text) || {}).text || '';\n}\nelse if (r.choices && r.choices[0]) text = r.choices[0].message?.content || '';  // chat\nelse if (r.error) text = `❌ AI 錯誤：\\n${r.error.message || JSON.stringify(r.error)}`;\nreturn [{ json: { ...base, aiText: text || '' } }];\n"
+      },
+      "id": "extract-gpt",
+      "name": "Extract GPT text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1520, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Detect keyword + state').item.json.settings.reference_file_url || 'https://example.invalid/none' }}",
+        "options": { "response": { "response": { "neverError": true, "responseFormat": "file" } } }
+      },
+      "id": "load-ref-gemini",
+      "name": "Load reference (binary)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 460],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build Gemini generateContent body (ported from callGemini L152-174).\nconst base = $('Detect keyword + state').first().json;\nconst s = base.settings;\nconst userParts = [{ text: `System: ${s.system_prompt}\\nReference: ${s.reference_text || ''}` }];\nconst bin = $input.first().binary && $input.first().binary.data;\nif (bin && s.reference_file_url) {\n  const mime = String(s.reference_file_url).endsWith('.pdf') ? 'application/pdf' : 'text/plain';\n  userParts.push({ inline_data: { data: bin.data, mime_type: mime } });  // bin.data is base64\n}\nuserParts.push({ text: `User: ${base.userMessage}` });\nconst body = {\n  contents: [{ role: 'user', parts: userParts }],\n  generationConfig: { temperature: 1.0, maxOutputTokens: s.gemini_max_tokens }\n};\nconst url = `https://generativelanguage.googleapis.com/v1beta/models/${s.gemini_model_name}:generateContent?key=${s.gemini_api_key}`;\nreturn [{ json: { ...base, _geminiUrl: url, _geminiBody: body } }];\n"
+      },
+      "id": "build-gemini",
+      "name": "Build Gemini request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 460]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json._geminiUrl }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [ { "name": "Content-Type", "value": "application/json" } ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._geminiBody) }}",
+        "options": {}
+      },
+      "id": "call-gemini",
+      "name": "Call Gemini",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1280, 460],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalize Gemini response.\nconst base = $('Build Gemini request').first().json;\nconst r = $input.first().json || {};\nlet text = '';\nif (r.candidates && r.candidates[0]) {\n  const part = (r.candidates[0].content?.parts || []).find(p => p.text);\n  text = part ? part.text : '';\n} else if (r.error) {\n  text = `❌ AI 錯誤：\\n${r.error.message || 'Gemini API Error'}`;\n}\nreturn [{ json: { ...base, aiText: text || '' } }];\n"
+      },
+      "id": "extract-gemini",
+      "name": "Extract Gemini text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1520, 460]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/reply",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $json.settings.line_channel_access_token }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"replyToken\": {{ JSON.stringify($json.event.replyToken) }},\n  \"messages\": [{ \"type\": \"text\", \"text\": {{ JSON.stringify(($json.aiText || '').slice(0, 4900) || '（無回應）') }} }]\n}",
+        "options": {}
+      },
+      "id": "reply-ai",
+      "name": "Reply AI text",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1760, 300],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const j = $json;\nreturn [{ json: { ok: true, userId: j.event?.userId, replied: !!j.aiText, aiText: j.aiText || '' } }];\n"
+      },
+      "id": "summary",
+      "name": "Return summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 300]
+    }
+  ],
+  "connections": {
+    "When Called":                  { "main": [[{ "node": "Dedup (insert processed_events)", "type": "main", "index": 0 }]] },
+    "Dedup (insert processed_events)": { "main": [
+                                       [{ "node": "Read user_states", "type": "main", "index": 0 }],
+                                       [{ "node": "Duplicate → skip", "type": "main", "index": 0 }]
+                                     ] },
+    "Read user_states":             { "main": [[{ "node": "Detect keyword + state", "type": "main", "index": 0 }]] },
+    "Detect keyword + state":       { "main": [[{ "node": "Handover keyword?", "type": "main", "index": 0 }]] },
+    "Handover keyword?":            { "main": [
+                                       [{ "node": "Get LINE profile", "type": "main", "index": 0 }],
+                                       [{ "node": "Human-mode + timeout", "type": "main", "index": 0 }]
+                                     ] },
+    "Get LINE profile":             { "main": [[{ "node": "Handover prep", "type": "main", "index": 0 }]] },
+    "Handover prep":                { "main": [[{ "node": "user_states exists?", "type": "main", "index": 0 }]] },
+    "user_states exists?":          { "main": [
+                                       [{ "node": "Update user_states (human)", "type": "main", "index": 0 }],
+                                       [{ "node": "Create user_states (human)", "type": "main", "index": 0 }]
+                                     ] },
+    "Update user_states (human)":   { "main": [[{ "node": "Reply 已轉接真人", "type": "main", "index": 0 }]] },
+    "Create user_states (human)":   { "main": [[{ "node": "Reply 已轉接真人", "type": "main", "index": 0 }]] },
+    "Reply 已轉接真人":             { "main": [[{ "node": "Fan out agents", "type": "main", "index": 0 }]] },
+    "Fan out agents":               { "main": [[{ "node": "Push to agents", "type": "main", "index": 0 }]] },
+    "Human-mode + timeout":         { "main": [[{ "node": "Proceed to AI?", "type": "main", "index": 0 }]] },
+    "Proceed to AI?":               { "main": [
+                                       [{ "node": "Needs revert?", "type": "main", "index": 0 }],
+                                       [{ "node": "Silent (human mode)", "type": "main", "index": 0 }]
+                                     ] },
+    "Needs revert?":                { "main": [
+                                       [{ "node": "Revert is_human_mode=false", "type": "main", "index": 0 }],
+                                       [{ "node": "GPT or Gemini?", "type": "main", "index": 0 }]
+                                     ] },
+    "Revert is_human_mode=false":   { "main": [[{ "node": "GPT or Gemini?", "type": "main", "index": 0 }]] },
+    "GPT or Gemini?":               { "main": [
+                                       [{ "node": "Load reference (text)", "type": "main", "index": 0 }],
+                                       [{ "node": "Load reference (binary)", "type": "main", "index": 0 }]
+                                     ] },
+    "Load reference (text)":        { "main": [[{ "node": "Build GPT request", "type": "main", "index": 0 }]] },
+    "Build GPT request":            { "main": [[{ "node": "Call OpenAI", "type": "main", "index": 0 }]] },
+    "Call OpenAI":                  { "main": [[{ "node": "Extract GPT text", "type": "main", "index": 0 }]] },
+    "Extract GPT text":             { "main": [[{ "node": "Reply AI text", "type": "main", "index": 0 }]] },
+    "Load reference (binary)":      { "main": [[{ "node": "Build Gemini request", "type": "main", "index": 0 }]] },
+    "Build Gemini request":         { "main": [[{ "node": "Call Gemini", "type": "main", "index": 0 }]] },
+    "Call Gemini":                  { "main": [[{ "node": "Extract Gemini text", "type": "main", "index": 0 }]] },
+    "Extract Gemini text":          { "main": [[{ "node": "Reply AI text", "type": "main", "index": 0 }]] },
+    "Reply AI text":                { "main": [[{ "node": "Return summary", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "active": false,
+  "pinData": {}
+}
