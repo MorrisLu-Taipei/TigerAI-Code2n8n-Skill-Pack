@@ -1,6 +1,6 @@
 {
   "name": "tigerai-n8n-skill-pack",
-  "version": "0.19.0",
+  "version": "0.20.0",
   "description": "TigerAI n8n Skill Pack — Sticky-Note-driven workflow generation with three-layer structure, 8-pattern cookbook, 2,061 reference workflows, and three usage modes (cookbook copy / Q&A / example finder). Pure REST API, no MCP dependency.",
   "author": "TigerAI",
   "license": "Proprietary (vendor skills under MIT — see skills/_vendor/LICENSE)",
@@ -16,6 +16,7 @@
     { "path": "skills/tigerai/tigerai-enterprise-patterns", "source": "tigerai", "role": "enterprise" },
     { "path": "skills/tigerai/tigerai-qa-mode", "source": "tigerai", "role": "interaction" },
     { "path": "skills/tigerai/tigerai-example-finder", "source": "tigerai", "role": "interaction" },
+    { "path": "skills/tigerai/n8n-code-to-native", "source": "tigerai", "role": "refactor" },
     { "path": "skills/tigerai/install-tigerai-n8n-pack", "source": "tigerai", "role": "maintenance" }
   ],
   "shared_resources": {

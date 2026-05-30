@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.20.0 — 新 skill：n8n Code → Native node 重構 + LINE CS 後台 TODO
+
+**新 skill：[`skills/tigerai/n8n-code-to-native/`](skills/tigerai/n8n-code-to-native/)**
+
+把 n8n workflow 裡的 Code (JS) 節點重構成原生宣告式節點（Set / Filter / Merge / Crypto / Aggregate / ConvertToFile）— 讓「看得懂 n8n canvas 但不寫 JS」的工程師也能讀。觸發詞：「原生化」、「改成 n8n 原生 node」、「reduce Code nodes」。
+
+- **硬規則** 6 條：每次轉換寫 sticky note 變更日誌；in-place（1→1）與 structural（1→N）分別處理；保留節點名（連線靠 name 對應）；善用表達式內的 `.map/.reduce/.filter/?./??/...`；禁止 IIFE 偽裝 JS；該留就留（LLM parser、crypto polyfill、動態巢狀 filter、per-item shape branching）。
+- **5 步流程**：盤點 → 分類（in-place Set / structural / keep）→ 用 Set v3.4 在地替換 → 寫 sticky 變更日誌 → 匯入驗證。
+- 附 **表達式速查表** + **常見陷阱**（`includeOtherFields` 在 parameter 層級、`Math.max(...[])` 回 `-Infinity` 要 guard、UTF-8 編碼、節點不要重命名等）。
+
+註冊在 `plugin.json` 的 `tigerai` skill 群，role: `refactor`。
+
+**LINE AI 客服範例補：後台 TODO**
+
+新增 [`examples/line-ai-customer-service/TODO.md`](examples/line-ai-customer-service/TODO.md) — 誠實標記目前 approach C 只是薄管理 shim，缺：真認證 / 對話歷史檢視 / 真人即時接手介面 / KB 多檔管理 / 方向決策（C vs B）。也涵蓋非後台待辦：Layer 3 實跑驗證、Error-handler workflow、多通路 entry。同時存入跨 session memory。
+
 ## v0.19.0 — 新增 LINE AI 客服 n8n 移植範例 + Google Workspace 逐行出處
 
 **新範例：[`examples/line-ai-customer-service/`](examples/line-ai-customer-service/)**
