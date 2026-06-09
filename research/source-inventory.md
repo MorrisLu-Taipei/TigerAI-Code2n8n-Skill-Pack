@@ -10,7 +10,7 @@
 
 ### A1. `n8n-skills-main/`
 - **角色**：**格式合約 + 直接沿用的 7 個 Skill**
-- **整合方式**：拷貝 `skills/*` 至 `delivery/TigerAI-n8n-Skill-Pack/skills/_vendor/`
+- **整合方式**：拷貝 `skills/*` 至 `delivery/TigerAI-Code2n8n-Skill-Pack/skills/_vendor/`
 - **關鍵檔**：`CLAUDE.md`（架構說明）、`skills/<name>/SKILL.md`（每個 Skill 的本體）
 - **授權**：MIT，可拷貝，需保留 LICENSE 與來源標註
 

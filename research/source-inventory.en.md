@@ -10,7 +10,7 @@
 
 ### A1. `n8n-skills-main/`
 - **Role**: **Format contract + 7 reusable Skills**
-- **Integration**: copy `skills/*` to `delivery/TigerAI-n8n-Skill-Pack/skills/_vendor/`
+- **Integration**: copy `skills/*` to `delivery/TigerAI-Code2n8n-Skill-Pack/skills/_vendor/`
 - **Key files**: `CLAUDE.md` (architecture), `skills/<name>/SKILL.md` (each Skill body)
 - **License**: MIT, copyable; preserve LICENSE and source attribution
 

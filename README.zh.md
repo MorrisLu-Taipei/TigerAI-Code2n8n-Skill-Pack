@@ -1,13 +1,13 @@
-# TigerAI n8n Skill Pack — 使用手冊
+# TigerAI Code2n8n Skill Pack — 使用手冊
 
 > 🌐 [English](README.md) | **繁體中文**
+> 📖 **什麼是 Code2n8n？** 讀 [Code2n8n 宣言](CODE2N8N.md) — 為什麼 AI Coding 時代企業反而**更**需要 n8n。
 
-> 用「跟同事講話」的方式描述需求，AI 自動產出 n8n 完整 workflow。
-> 不會寫程式也能用。
+> **Code2n8n 的定位**：AI Coding（Claude Code / Codex / Antigravity）擅長把程式「寫出來」；n8n 擅長把程式變成「企業管得住」的流程資產。這個 pack 就是兩者之間的橋 — 用自然語言描述需求，產出 IT、營運、主管都看得懂、稽核得了、交接得下去、跨系統治理得來的 n8n workflow。
 
-![TigerAI n8n Skill Pack 完整流程圖](docs/images/tigerai-flow.png)
+![TigerAI Code2n8n Skill Pack 完整流程圖](docs/images/tigerai-flow.png)
 
-> 📊 **一張圖看懂**：使用者寫黃色便利貼（Layer 1 意圖）→ TigerAI Skill Pack 大腦（Cookbook + 2,061 參考 workflow + DSL v1.2 + 12 個 Skill + 4 大企業模式）→ 產出三層結構 workflow JSON（n8n 真實 workflow）。三大特色，零門檻。
+> 📊 **一張圖看懂**：使用者寫黃色便利貼（Layer 1 意圖）→ Code2n8n Skill Pack 大腦（Cookbook + 2,061 參考 workflow + DSL v1.2 + 13 個 Skill + 4 大企業模式）→ 產出三層結構 workflow JSON（n8n 真實 workflow），具備登入、稽核、版控、交接、跨系統編排的企業治理能力。
 > *by n8n Taipei Ambassador Morris Lu*
 
 ---
@@ -118,8 +118,9 @@ AI ──> 你：✅ 已產生 workflow.json（Schedule → Shopify → Code →
 ## 📂 Pack 內容
 
 ```text
-TigerAI-n8n-Skill-Pack/
+TigerAI-Code2n8n-Skill-Pack/
 ├── README.md                  ← 你在這裡
+├── CODE2N8N.md                ← Code2n8n 宣言（定位與核心論點）
 ├── 01-INSTALL.md              ← 安裝步驟
 ├── 02-USAGE-MODES.md          ← 三種使用方式
 ├── 03-FIRST-WORKFLOW.md       ← 跟我做：第一個 workflow

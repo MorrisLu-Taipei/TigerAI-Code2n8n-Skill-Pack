@@ -1,4 +1,4 @@
-# TigerAI n8n Skill Pack 一鍵安裝（Windows PowerShell）
+# TigerAI Code2n8n Skill Pack 一鍵安裝（Windows PowerShell）
 # 用法: .\install.ps1
 
 $ErrorActionPreference = 'Stop'
@@ -14,7 +14,7 @@ if (Test-Path $AntigravityHome) { $Targets += Join-Path $AntigravityHome 'global
 # If neither exists, default to Claude
 if ($Targets.Count -eq 0) { $Targets = @(Join-Path $ClaudeHome 'skills') }
 
-Write-Host "📦 TigerAI n8n Skill Pack — Installer" -ForegroundColor Cyan
+Write-Host "📦 TigerAI Code2n8n Skill Pack — Installer" -ForegroundColor Cyan
 Write-Host "   Source: $PackDir"
 foreach ($T in $Targets) {
   Write-Host "   Target: $T"

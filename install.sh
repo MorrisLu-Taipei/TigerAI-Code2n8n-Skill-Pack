@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# TigerAI n8n Skill Pack 一鍵安裝（Linux / macOS / WSL / Git Bash）
+# TigerAI Code2n8n Skill Pack 一鍵安裝（Linux / macOS / WSL / Git Bash）
 # 用法: bash install.sh
 
 set -euo pipefail
@@ -17,7 +17,7 @@ if [ ${#TARGETS[@]} -eq 0 ]; then
   TARGETS+=("$CLAUDE_TARGET")
 fi
 
-echo "📦 TigerAI n8n Skill Pack — Installer"
+echo "📦 TigerAI Code2n8n Skill Pack — Installer"
 echo "   Source: $PACK_DIR"
 for T in "${TARGETS[@]}"; do
   echo "   Target: $T"

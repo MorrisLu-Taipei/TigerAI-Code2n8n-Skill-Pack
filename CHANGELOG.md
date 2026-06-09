@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.21.0 — 改名為 TigerAI Code2n8n Skill Pack（品牌定位升級）
+
+**Skill Pack 從「n8n 工具集」升級為「AI Coding → 企業可治理 n8n 工作流」的橋。**
+
+- GitHub repo 改名：`TigerAI-n8n-Skill-Pack` → [`TigerAI-Code2n8n-Skill-Pack`](https://github.com/MorrisLu-Taipei/TigerAI-Code2n8n-Skill-Pack)（舊網址 GitHub 自動 301 redirect，star / fork / issue / commit 歷史完整保留）
+- 新增 [`CODE2N8N.md`](CODE2N8N.md)：完整宣言文件 — 為什麼 AI Coding 時代企業反而**更**需要 n8n、Code2n8n 在中間扮演什麼角色、AI Coding vs Code2n8n + n8n 的新分工
+- `README.md` / `README.zh.md`：標題改為 *TigerAI Code2n8n Skill Pack*，前言加 Code2n8n 定位（橋接 AI Coding 與企業 n8n 治理），導引到 manifesto
+- `plugin.json`：`name` → `tigerai-code2n8n-skill-pack`，`description` 重寫凸顯 Code2n8n 定位
+- `install.ps1` / `install.sh`：installer 標題對齊新品牌
+- `research/source-inventory*.md`：交付路徑改為 `TigerAI-Code2n8n-Skill-Pack/`
+
+**沒有刪除任何功能**，只是把同一套技術放在正確的故事裡：
+
+> AI Coding 解決「功能怎麼做」；Code2n8n 解決「功能如何模組化」；n8n 解決「模組如何與整個企業協作」。
+
 ## v0.20.0 — 新 skill：n8n Code → Native node 重構 + LINE CS 後台 TODO
 
 **新 skill：[`skills/tigerai/n8n-code-to-native/`](skills/tigerai/n8n-code-to-native/)**

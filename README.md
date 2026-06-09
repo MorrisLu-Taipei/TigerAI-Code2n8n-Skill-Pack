@@ -1,13 +1,13 @@
-# TigerAI n8n Skill Pack — User Manual
+# TigerAI Code2n8n Skill Pack — User Manual
 
 > 🌐 **English** | [繁體中文](README.zh.md)
+> 📖 **Why Code2n8n?** Read the [Code2n8n manifesto](CODE2N8N.md) — why enterprises need n8n *more* in the AI-coding era, not less.
 
-> Describe what you want in plain language (like talking to a coworker), and AI generates a complete n8n workflow for you.
-> No coding required.
+> **The Code2n8n positioning**: AI Coding (Claude Code / Codex / Antigravity) is great at *writing* code. n8n is great at making code *manageable by an enterprise*. This pack is the bridge — describe what you want in plain language, get a runnable n8n workflow that IT, operations, and managers can all read, audit, hand off, and govern.
 
-![TigerAI n8n Skill Pack — full pipeline diagram](docs/images/tigerai-flow-en.png)
+![TigerAI Code2n8n Skill Pack — full pipeline diagram](docs/images/tigerai-flow-en.png)
 
-> 📊 **The whole pack in one picture**: User writes yellow sticky notes (Layer 1 intent) → TigerAI Skill Pack brain (Cookbook + 2,061 reference workflows + DSL v1.2 + 12 skills + 4 enterprise patterns) → Three-layer workflow JSON (real n8n workflow). Three features, zero learning curve.
+> 📊 **The whole pack in one picture**: User writes yellow sticky notes (Layer 1 intent) → Code2n8n Skill Pack brain (Cookbook + 2,061 reference workflows + DSL v1.2 + 13 skills + 4 enterprise patterns) → Three-layer workflow JSON (real n8n workflow), ready for enterprise governance (login, audit, version, handover, cross-system orchestration).
 > *by n8n Taipei Ambassador Morris Lu*
 
 ---
@@ -118,8 +118,9 @@ No code. No syntax to learn. No need to memorize n8n node names.
 ## 📂 Pack contents
 
 ```text
-TigerAI-n8n-Skill-Pack/
+TigerAI-Code2n8n-Skill-Pack/
 ├── README.md / README.zh.md ← You are here
+├── CODE2N8N.md              ← Code2n8n manifesto (positioning + thesis)
 ├── 01-INSTALL.md/.en.md       ← Install
 ├── 02-USAGE-MODES.md/.en.md   ← Three usage modes
 ├── 03-FIRST-WORKFLOW.md/.en.md ← Hands-on tutorial
