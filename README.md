@@ -7,9 +7,21 @@
 
 ![TigerAI Code2n8n Skill Pack — Code2n8n hero (v16 user-remaster)](docs/images/code2n8n-hero-en.png)
 
-> 🎯 **One-sentence positioning**: **TigerAI Code2n8n Skill Pack is a porting / review / governance methodology pack; n8n & n8n Enterprise are the platforms that actually carry the enterprise capabilities.** (The platform-capability disclaimer is now baked into the hero image's bottom bar.)
+> 🎯 **One-sentence positioning**: **This Pack is a porting / review / validation / governance method. n8n editions + your IT carry the enterprise platform capabilities.**
 
-> 📊 **The whole pack in one picture**: Natural-language intent *or* an existing program system → Code2n8n Skill Pack (Cookbook + 2,061 reference workflows + DSL v1.2 + **14 skills** + 4 enterprise patterns) → decides what logic stays as code vs lifts into an n8n node → emits a reviewable, hand-off-able, cross-system n8n workflow.
+### What this Pack is — and what it is not
+
+| ✅ This Pack **is** | ⛔ This Pack **is not** |
+| --- | --- |
+| Migration methodology — Inventory → Partition → Workflow Design | A replacement for n8n Enterprise (SSO / IAM / HA / Audit / Source Control / Environments) |
+| Security Review **gate** — SOPs, skill, positive + negative examples, deterministic scanner | A full SAST / DAST / fuzzer / static-analyser for arbitrary code |
+| Validation SOP + first-line CI gate (lint, secret scan, manifest, installer, scanner, optional live round-trip) | A complete workflow-deployment pipeline (no staging promote / blue-green / automatic rollback yet) |
+| Case-study evidence (3 real ports + 16 reviewable workflow JSONs) | A universal "code → workflow" compiler — Partition is a design decision, not auto-translation |
+| Reference corpus (2,061 community workflows, MIT, secrets scrubbed) for design lookup | Validated production templates — the corpus is **lookup material**, not certified workflows |
+
+Receipts for the ✅ column: [`docs/responsibility-matrix.md`](docs/responsibility-matrix.md) (status per claim) and [`tests/REPORT-v0.24.1-evidence.md`](tests/REPORT-v0.24.1-evidence.md) (fresh dated evidence).
+
+> 📊 **The whole pack in one picture**: Natural-language intent *or* an existing program system → Code2n8n Skill Pack (Cookbook + 2,061 reference workflows *as a design-lookup corpus, not validated templates* + DSL v1.2 + **14 skills** + 4 enterprise patterns) → decides what logic stays as code vs lifts into an n8n node → emits a reviewable, hand-off-able, cross-system n8n workflow.
 > *by n8n Taipei Ambassador Morris Lu*
 
 ---
@@ -38,9 +50,9 @@ Code2n8n **does not transliterate every line of Python or JavaScript into nodes*
 
 | Case | Upstream → n8n | Headline number |
 |---|---|---|
-| [Google Workspace admin](examples/google-workspace-admin-workflow/) | 1,373-line Apps Script → 7 workflows (core + entry + setup) | Line-by-line `PROVENANCE.md` + import 7/7 |
-| [LINE customer service (cloud)](examples/line-ai-customer-service/) | Netlify + Supabase → core + entry + approach-C admin | Import 6/6 |
-| [LINE customer service (on-prem)](examples/line-ai-customer-service-onprem/) | Docker + Postgres + Redis + Qdrant + Ollama → 37-node brain | 5-phase V&V + ⚠️ `SECURITY-CAVEATS.md` (deliberately not deployable) |
+| [Google Workspace admin](examples/google-workspace-admin-workflow/) | 1,373-line Apps Script → 7 workflows (core + entry + setup) | Static lint 0 err / 0 warn · n8n REST import 7/7 · **live execution requires your Google Workspace credentials** |
+| [LINE customer service (cloud)](examples/line-ai-customer-service/) | Netlify + Supabase → core + entry + approach-C admin | Static lint 0 err / 0 warn · n8n REST import 6/6 · **live execution requires your LINE + Supabase credentials** |
+| [LINE customer service (on-prem)](examples/line-ai-customer-service-onprem/) | Docker + Postgres + Redis + Qdrant + Ollama → 37-node brain | 5-phase V&V; security review concluded **BLOCKED — DO NOT DEPLOY AS-IS** (kept as a teaching artefact, see [`SECURITY-REVIEW.md`](examples/line-ai-customer-service-onprem/SECURITY-REVIEW.md)) |
 
 Full evidence table further down. The bar above is what *immediately* backs the two-path claim — if any of these three case studies disappear, the claim weakens.
 
@@ -280,8 +292,8 @@ TigerAI-Code2n8n-Skill-Pack/
 
 | Case | Code2n8n path | Evidence |
 |---|---|---|
-| [Google Workspace admin workflow](examples/google-workspace-admin-workflow/) | 1,373-line Apps Script → core + entry n8n workflows | Line-by-line `PROVENANCE.md`; static lint 0 err / 0 warn; n8n REST import 7/7 |
-| [LINE AI customer service (cloud)](examples/line-ai-customer-service/) | Netlify Functions + Supabase → n8n runtime + approach-C admin UI | Static lint 0 err / 0 warn; n8n REST import 6/6 |
+| [Google Workspace admin workflow](examples/google-workspace-admin-workflow/) | 1,373-line Apps Script → core + entry n8n workflows | Line-by-line `PROVENANCE.md`; static lint 0 err / 0 warn; n8n REST import 7/7; live execution needs your Google Workspace credentials |
+| [LINE AI customer service (cloud)](examples/line-ai-customer-service/) | Netlify Functions + Supabase → n8n runtime + approach-C admin UI | Static lint 0 err / 0 warn; n8n REST import 6/6; live execution needs your LINE + Supabase credentials |
 | [LINE AI customer service (on-prem)](examples/line-ai-customer-service-onprem/) | Docker + Postgres + Redis + Qdrant + Ollama + n8n | 37-node workflow; 5-phase V&V; security audit disclosed major defects — **DO NOT DEPLOY AS-IS** |
 
 The third case deliberately preserves the upstream POC's security defects and documents them in [`SECURITY-CAVEATS.md`](examples/line-ai-customer-service-onprem/SECURITY-CAVEATS.md). This isn't "failed acceptance swept under the rug" — it's Code2n8n's core principle: **AI-written software that runs is not automatically software an enterprise can deploy.**

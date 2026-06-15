@@ -1,5 +1,49 @@
 # Changelog
 
+## v0.26.1 — 三層審查（自己 / 工程師 / 酸民）的防守強化
+
+v0.26.0 把矩陣 🟡 結清。0.26.1 不加功能，把整套敘事的「容易被打 / 容易被誤讀」的點全部硬化。
+
+### 🎨 Hero PNG：白底正式註解，不再是字幕浮層
+
+之前 v0.25 是深色底白字像 caption，會被看成 subtitle overlay。改為**白底**、**頂部 hairline 分隔線**、**深色文字**的正式圖內註解，且 copy 升級為完整一句、不再點到為止：
+
+> *Platform capabilities such as SSO / IAM, Audit Log, HA, Metrics, and Source Control are provided by n8n editions and enterprise IT deployment. This Pack provides the migration, review, validation, and governance method.*
+
+中文同款。圖被單獨轉傳時，責任邊界**像圖的一部分**被看，不像被打字幕。重做後的 [`scripts/stamp-hero.ps1`](scripts/stamp-hero.ps1) 已 BOM-saved + PS 5.1 安全；底圖從 d5682fa（v0.23.0 pre-stamp 版）取回乾淨原檔再燒。
+
+### 🪪 README 新增「What this Pack is — and what it is not」
+
+緊接 hero 一張表，把工程師會挑、酸民會酸的五個誤讀路徑一次擋下：
+
+| ✅ This Pack **is** | ⛔ This Pack **is not** |
+| --- | --- |
+| 移植方法論（Inventory → Partition → Workflow Design） | n8n Enterprise 的替代品 |
+| Security Review 關卡（SOP + Skill + 範本 + 確定性掃描器） | 萬用 SAST / DAST / fuzzer |
+| 驗證 SOP + 第一線 CI gate | 完整 workflow deployment pipeline |
+| 三案例移植 + 16 個可審 workflow JSON | 萬用「程式碼 → workflow」compiler |
+| 2,061 設計查找語料 | 已驗證 production 模板 |
+
+英文版同步。表後直接附上 receipts 連結（responsibility-matrix + 最新 evidence report）。
+
+### 🧪 Proof bar 精準化
+
+`import 7/7` / `Import 6/6` 容易被工程師讀成「能跑」。改為三段式：
+
+> Static lint 0 err / 0 warn · n8n REST import 7/7 · **live execution requires your Google Workspace credentials**
+
+每一格都標出**靜態 lint + import + live 三個層次**，import 成功 ≠ runtime 成功被寫死在原文。On-prem 那欄改為直接寫 BLOCKED 結論 + 指向 SECURITY-REVIEW。
+
+### 🧾 「2,061 reference workflows」加 inline 註
+
+The whole-pack-in-one-picture 一行裡，把 *"2,061 reference workflows"* 直接 inline 標註 **"as a design-lookup corpus, not validated templates"** — 不靠讀者翻到責任矩陣才知道這是語料。
+
+### 一句話
+
+故事沒動。**證據、邊界、文案防守都向工程師那一側靠了一格**。v0.26.0 結清能力 backlog；v0.26.1 結清敘事 backlog。
+
+---
+
 ## v0.26.0 — 結清 responsibility-matrix 最後 4 個 🟡
 
 v0.25.0 把 installer / hero PNG / CI gate 收尾。v0.26.0 把責任矩陣裡剩下的 4 個 🟡（live-n8n round-trip、確定性 security scanner、完整 CI/CD、Retry/Approval/Handover drop-in 模板）一次清完。
