@@ -1,5 +1,71 @@
 # Changelog
 
+## v0.23.0 — 安全/治理 skill 落地 + 對著 hero 圖逐項補實證
+
+兌現 v0.22.2 安全揭露的下一步：把「Security Audit」從一行宣告升級為真正的 skill + 把 hero 圖每一格逐項對證並補上實際弱的地方。
+
+### 🆕 新 skill：[`skills/tigerai/n8n-security-governance/`](skills/tigerai/n8n-security-governance/SKILL.md)
+
+141 行的獨立安全治理 skill，不是 placeholder：
+
+- **12 個強制檢查領域**：Authentication / Authorization / Injection / Webhooks / Secrets / Input&files / Browser&API / **AI&agents（prompt-injection 邊界、tool allowlist）** / Data / Operations / **n8n 自身（production webhook 認證、credential references、Code node 沙箱）** / Dependencies
+- **結構化 finding 範本**：SEC-### + Severity / Status / Evidence / Impact / Reproduction / Required fix / Validation / Owner / Target version
+- **PASS / CONDITIONAL / BLOCKED 決策矩陣**
+- **Version control 章**：branch policy、SemVer sticky note、release tag、commit SHA 記錄
+- **CI/CD gate 7 項閘門**：JSON lint、secret scan、dependency/container scan、n8n REST import、security regression tests、release artifact hash、production activation 簽核
+- **Rollback 5 件必填**：known-good Git tag、previous workflow JSON、migration reversibility、credential compatibility、owner + procedure
+- **新增 Observability 章**：8 項 runtime signal（execution success/error count、p50/p95/p99 latency、webhook 4xx/5xx、credential usage frequency、queue depth、disk usage、exception classes）+ 3 條告警路由 + dashboard 鏈接強制義務 + 「沒裝監控就要寫進 SECURITY-CAVEATS」原則
+- 註冊在 plugin.json 為 `role: security`；skill 計數 14 → **15**
+
+### 🔗 marquee `code-to-workflow` 升級
+
+- 新硬規則 **§8**「Security review is a real gate, not a caption」— Step 1.5 強制 invoke `n8n-security-governance`
+- 新硬規則 **§9**「Every release must be traceable and reversible」— commit SHA / workflow version / n8n tag / rollback target 必須描述同一個 release
+
+### 🆕 補 Pillar 4.2：人工核准 / Handover 設計
+
+在 `tigerai-enterprise-patterns` 加入 [Pillar 4.2](skills/tigerai/tigerai-enterprise-patterns/SKILL.md)（hero 圖 Step 4「Approval」對應的 SOP）：
+
+- 5 種核准節點型態（Email / Slack / Form / Telegram / 內建 `sendAndWait`）+ 適用情境
+- **每個 approval 節點 timeout 必設**（金流 4h、客服 2h、一般 24h）
+- Timeout 後 3 種 escalation 模式（自動拒絕 / 升級 / 待事後追認）
+- Audit trail 強制欄位（request_id / requester / approver / decision / timestamp / reason / channel）
+- 拒絕路徑必寫補償動作
+- Handover 設計：真人客服接手 / 跨班次交班 / AI→工程師人工接管
+- 5 條反模式（無 timeout、timeout 自動 continue、無 log、共用節點、approver 寫死）
+
+### 🆕 新檔：[`docs/enterprise-setup.md`](docs/enterprise-setup.md)
+
+回答「hero 圖第三塊 SSO / IAM / HA / DR 是 Pack 還是 n8n 提供？」這個圖示讀起來容易誤解的問題：
+
+- Pack vs n8n vs 你的 IT 完整責任表
+- SSO 章：n8n self-hosted enterprise 提供 SAML / OIDC / LDAP / RBAC / Project；Pack workflow 該遵守的 IAM-friendly 原則（不寫死 user identity、credential 走 reference、每 webhook 標 owner project、拒絕 manualTrigger 上線）
+- HA 章：n8n queue mode 多 worker；Pack workflow 必遵守的 queue-safe 設計（不依賴本機檔案、Wait 取代 sleep、idempotency key、必設 timeout）+ 部署層檢查清單
+- DR 章：必備 4 種備份目標（Postgres / Encryption Key / Workflow JSON exports / IaC）+ 季度 DR drill 流程
+- 採用順序：先架 n8n enterprise + SSO/RBAC → 才裝 Skill Pack → 才跑 Code2n8n 移植 → Step 1.5 review → CI gate → production
+
+### 📝 周邊同步
+
+- CODE2N8N.md 在「Demo ≠ Production」段後加 Pack/n8n/IT 責任邊界引導
+- 兩個 README 在 Proof bar 後加責任邊界提醒 + 連到 enterprise-setup.md
+- README.md 英文版 hero 換上 v16（user master remaster native，正視圖比例放大），alt text 同步更新
+- Hero 中文版仍是 v11（v15 中文字體 logo 重疊問題待修）
+
+### ✅ 對照 hero 圖逐項實證表
+
+| 圖示元素 | 兌現 |
+| --- | --- |
+| Path A 意圖 → Workflow | ✅ sticky-note-to-workflow |
+| Path B 既有系統 → 移植 | ✅ code-to-workflow |
+| Step 1 Inventory | ✅ code-to-workflow Step 1 |
+| Step 2 Partition | ✅ code-to-workflow Step 2 |
+| **Step 3 Security Audit** | ✅✅ **n8n-security-governance 141 行專屬 skill + code-to-workflow Step 1.5 + 硬規則 §8/§9** |
+| Step 4 Retry / Approval / Handover | ✅ Retry 在 5 個 skill 提到；Approval ✅ **新增 Pillar 4.2 補完**；Handover 在 code-to-workflow |
+| Step 5 Production Validation | ✅ code-to-workflow Step 6（3 層漏斗）+ examples 內實際 `_audit.mjs` / `_n8n_import_test.mjs` |
+| 未修補缺陷 → SECURITY-CAVEATS.md | ✅ n8n-security-governance 必產出 + onprem 案例實檔 |
+| Block 3 SSO / IAM / HA / DR | ✅ enterprise-setup.md 切清責任邊界 + Pack 該遵守的 workflow 設計原則 |
+| Block 3 Observability | ✅ n8n-security-governance 新 Observability 章 |
+
 ## v0.22.2 — on-prem 範例安全缺陷揭露（不修補，公開警告）
 
 由使用者主動指出後稽核：[`examples/line-ai-customer-service-onprem/`](examples/line-ai-customer-service-onprem/) 的上游 POC 程式碼**不是**可上線實作。**我們選擇公開揭露而不靜悄悄打補丁** — 因為這些缺陷本身就是 Code2n8n 的教學重點（AI 寫的能跑 ≠ 能上線），偷修會誤導讀者也偏離 CREDITS.md 寫的「Morris Lu 沒做這層硬化」事實。

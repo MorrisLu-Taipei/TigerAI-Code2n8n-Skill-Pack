@@ -5,9 +5,9 @@
 
 > **The Code2n8n positioning**: AI Coding (Claude Code / Codex / Antigravity) is great at *writing* code. n8n is great at making code *manageable by an enterprise*. This pack is the bridge — **describe a requirement, *or* point at an existing system** (Apps Script / Express / Lambda / Docker stack), and get a runnable n8n workflow that IT, operations, and managers can all read, audit, hand off, and govern.
 
-![TigerAI Code2n8n Skill Pack — Code2n8n hero (v15)](docs/images/code2n8n-hero-en.png)
+![TigerAI Code2n8n Skill Pack — Code2n8n hero (v16 user-remaster)](docs/images/code2n8n-hero-en.png)
 
-> 📊 **The whole pack in one picture**: Natural-language intent *or* an existing program system → Code2n8n Skill Pack (Cookbook + 2,061 reference workflows + DSL v1.2 + **14 manifest skills** + 4 enterprise patterns) → decides what logic stays as code vs lifts into an n8n node → emits a reviewable, hand-off-able, cross-system n8n workflow.
+> 📊 **The whole pack in one picture**: Natural-language intent *or* an existing program system → Code2n8n Skill Pack (Cookbook + 2,061 reference workflows + DSL v1.2 + **15 manifest skills** + 4 enterprise patterns) → decides what logic stays as code vs lifts into an n8n node → emits a reviewable, hand-off-able, cross-system n8n workflow.
 > *by n8n Taipei Ambassador Morris Lu*
 
 ---
@@ -24,7 +24,7 @@ natural language / yellow sticky note
 
 Path B: port an existing system
 Apps Script / Express / Lambda / Netlify Functions / Docker stack
-  → code-to-workflow (inventory, partition, security audit, port, validate)
+  → code-to-workflow (inventory, dedicated security gate, partition, port, validate, version/rollback evidence)
   → code modules + n8n workflow + migration docs
 ```
 
@@ -41,6 +41,8 @@ Code2n8n **does not transliterate every line of Python or JavaScript into nodes*
 | [LINE customer service (on-prem)](examples/line-ai-customer-service-onprem/) | Docker + Postgres + Redis + Qdrant + Ollama → 37-node brain | 5-phase V&V + ⚠️ `SECURITY-CAVEATS.md` (deliberately not deployable) |
 
 Full evidence table further down. The bar above is what *immediately* backs the two-path claim — if any of these three case studies disappear, the claim weakens.
+
+> 🛠️ **Responsibility boundary**: The third block of the hero diagram ("n8n Enterprise Orchestration") lists SSO / IAM / HA / DR — those are owned by **n8n self-hosted enterprise** and your IT, not by this Pack. The Pack's job is to make sure Code2n8n-produced workflows *land cleanly* on top (IAM-friendly, queue-safe, rollback-traceable). The split between Pack / n8n / your IT, and the workflow-design rules that follow, are in [`docs/enterprise-setup.md`](docs/enterprise-setup.md).
 
 ---
 
@@ -61,7 +63,7 @@ This Skill Pack is itself a working demo of **Agentic Engineering**:
 
 ### Agentic footprints in this repo
 
-- **`skills/`** — `plugin.json` registers **14 Claude Code / Antigravity skills**; each `SKILL.md` is co-authored by humans and AI
+- **`skills/`** — `plugin.json` registers **15 Claude Code / Antigravity skills**; each `SKILL.md` is co-authored by humans and AI
 - **`.agent/workflows/`** — Antigravity-native agentic workflows (e.g. `/install-n8n-pack` one-shot installer)
 - **`cookbook/`** — 8 natural-language → workflow examples showing how to "talk to" the AI
 - **`spec/sticky-note-three-layer.md`** — Three-layer structure spec that forces reviewable AI output
@@ -169,10 +171,11 @@ TigerAI-Code2n8n-Skill-Pack/
 ├── cookbook/                  ← 8 copy-paste recipes (each has plain-language + DSL fold)
 │   └── 00-INDEX.md/.en.md
 │
-├── skills/                    ← 13 skill folders on disk; plugin manifest registers 14 entries
+├── skills/                    ← 14 skill folders on disk; plugin manifest registers 15 entries
 │   ├── _vendor/                  6 vendor n8n-skills (MIT)
-│   └── tigerai/                  7 TigerAI execution skills
+│   └── tigerai/                  8 TigerAI execution skills
 │       ├── code-to-workflow/        ← Marquee: existing code / system → n8n
+│       ├── n8n-security-governance/ ← Security + version control + CI/CD + rollback gate
 │       └── n8n-code-to-native/      ← Code node → native n8n nodes
 │
 ├── spec/                      ← Technical specs (for engineers)
@@ -194,7 +197,7 @@ TigerAI-Code2n8n-Skill-Pack/
 └── plugin.json                ← Skill manifest
 ```
 
-> ⚠️ `plugin.json` currently registers one extra maintenance skill, `install-tigerai-n8n-pack`, whose folder is not yet committed to the repository — that's why the manifest has 14 entries while the on-disk skills directory has 13. Either add the missing folder or remove the stale entry before the next release.
+> ⚠️ `plugin.json` currently registers one extra maintenance skill, `install-tigerai-n8n-pack`, whose folder is not yet committed to the repository — that's why the manifest has 15 entries while the on-disk skills directory has 14. Either add the missing folder or remove the stale entry before the next release.
 
 ---
 
@@ -214,9 +217,10 @@ TigerAI-Code2n8n-Skill-Pack/
 ### I'm an engineer / integrator
 1. This file → `spec/sticky-note-three-layer.md` + `spec/sticky-note-dsl.md`
 2. Porting existing code: `skills/tigerai/code-to-workflow/SKILL.md`
-3. Building from scratch intent: `skills/tigerai/sticky-note-to-workflow/SKILL.md`
-4. `skills/tigerai/n8n-api-bridge/SKILL.md`: n8n REST API SOP
-5. `research/patterns.md`: 7 standard skeletons + anti-patterns
+3. Security, version control, CI/CD, and rollback gate: `skills/tigerai/n8n-security-governance/SKILL.md`
+4. Building from scratch intent: `skills/tigerai/sticky-note-to-workflow/SKILL.md`
+5. `skills/tigerai/n8n-api-bridge/SKILL.md`: n8n REST API SOP
+6. `research/patterns.md`: 7 standard skeletons + anti-patterns
 
 ### I have existing code I want to move into n8n
 1. Read [`CODE2N8N.md`](CODE2N8N.md) first to understand the "keep in code / lift to flow" split

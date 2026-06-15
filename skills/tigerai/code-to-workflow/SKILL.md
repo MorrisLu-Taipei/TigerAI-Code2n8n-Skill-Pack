@@ -39,6 +39,8 @@ Read at least one before using this skill — they are the empirical ground trut
 5. **Preserve fidelity.** If the upstream has "10 default tasks" / "14 dropdown choices" / "5 reminder offsets", the port keeps those exactly — and `PROVENANCE.md` maps each preserved item to the upstream line number, pinned to a specific commit SHA.
 6. **Always validate before declaring done.** Run the 3-layer funnel (Step 6 below) — *especially* the local n8n REST import. Lint passing alone is not enough.
 7. **Tag local imports.** Any workflow imported into the user's local n8n must carry `[Claude YYYY-MM-DD]` name prefix + `claude-import-YYYY-MM-DD` tag + `active: false`. See the memory note `n8n-local-import-marking`.
+8. **Security review is a real gate, not a caption.** Run [`n8n-security-governance`](../n8n-security-governance/SKILL.md) during Step 1.5. Record evidence, severity, status, owner, target version, and a PASS / CONDITIONAL / BLOCKED decision.
+9. **Every release must be traceable and reversible.** The reviewed workflow JSON, SDD, security artifacts, tests, Git commit SHA, workflow internal version, n8n release tag, and rollback target must describe the same release.
 
 ## The 7-step methodology
 
@@ -57,7 +59,7 @@ Read the upstream repo and list:
 
 ### Step 1.5 — Security audit (mandatory before any "enterprise" claim)
 
-Most AI-coded POCs ship with severe auth / injection holes that you MUST detect before you tell the user the port is deployable. Minimum checklist:
+Run [`n8n-security-governance`](../n8n-security-governance/SKILL.md) for the full security, version-control, CI/CD, and rollback gate. Most AI-coded POCs ship with severe auth / injection holes that you MUST detect before you tell the user the port is deployable. Minimum checklist:
 
 | Check | Where to look | How |
 | --- | --- | --- |

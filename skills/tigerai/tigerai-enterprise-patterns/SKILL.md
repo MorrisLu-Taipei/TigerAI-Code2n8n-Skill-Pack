@@ -84,6 +84,49 @@ description: Applies TigerAI enterprise-grade design patterns when generating n8
 - 客戶可透過 Slack channel `#tigerai-skill-pack-updates` 訂閱新增項目
 - 過時項目移至 `research/deprecated-services.md`（暫未建立）保留歷史
 
+### Pillar 4.2：人工核准 / Handover 設計（Human-in-the-Loop）
+
+**問題**：AI 寫的 workflow 常常「全自動跑完」，但企業實際需要在關鍵節點停下來等真人簽核（出帳前、發大量訊息前、修改正式資料前）。沒有 approval 節點＝出事沒人擋。
+
+**核准節點型態（n8n 內建）**：
+
+| 通道 | 節點 | 適用情境 |
+| --- | --- | --- |
+| Email | `n8n-nodes-base.emailSend` + `wait` + 回覆 webhook，或 `sendAndWaitForResponse` 模式 | 主管慢但留紀錄 |
+| Slack | `slack` send + `wait` for button click webhook | 即時、多人會議室可見 |
+| Form / 內建 Form Trigger | `formTrigger` 收第二階段表單 | 跨部門、外部廠商 |
+| Telegram / LINE | `httpRequest` 發 inline keyboard | 一線值班 |
+| n8n built-in `sendAndWait` operation | Email / Slack / Teams 都支援 | **首選**，內建超時與簽到 |
+
+**設計規則（AI 必遵守）**：
+
+1. **每個 approval 節點 timeout 必設**。預設 24 小時；金流類 4 小時；客服類 2 小時。
+2. **Timeout 後必有 escalation 路徑**。三種模式（依風險升序）：
+   - 自動拒絕並通知申請者（最保守）
+   - 轉給代理人或主管的主管（升級）
+   - 自動核准但標「待事後追認」（最寬鬆，僅限低風險）
+3. **Audit trail 強制留**：在 approval 節點之後接一個 audit log 寫入（Sheets / Postgres / Slack channel 都可），欄位至少：`request_id, requester, approver, decision, timestamp, reason, ip_or_channel`。
+4. **拒絕路徑必寫補償動作**：「IF 拒絕 → 回滾 / 通知 / 寫拒絕原因到 log」。不能只是流程結束。
+5. **不可把 approval 節點接的 token 寫進 Layer 1 sticky note** — token 是執行期參數，屬 credential。
+
+**Handover（移交）設計規則**：
+
+| 場景 | 必做 |
+| --- | --- |
+| 真人客服接手（LINE / Web chat） | 寫 `is_human_mode` 狀態到 DB；timeout 後自動歸還；Layer 3 註明逾時策略 |
+| 跨班次交班 | 寫一個 `daily-handover-summary` workflow（schedule + 查當天未完成任務 + 發 Slack） |
+| AI → 工程師人工接管 | 工作流暫停（`wait` until `webhook`），把 context 寫成可閱讀的 Markdown 摘要存到 audit log |
+
+**反模式（拒絕產出）**：
+
+- ❌ Approval 節點無 timeout
+- ❌ Timeout 後直接「continue」當作通過
+- ❌ Approval 結果沒寫進任何 log
+- ❌ 拒絕路徑跟通過路徑共用節點且沒分支
+- ❌ 在 Layer 1 sticky 寫死 approver email（應走 credential 或 settings 表）
+
+**對應 onprem LINE CS 案例**：那個系統的「真人接手」流程是 handover 半套示範（有 `is_human_mode` 狀態 + 逾時歸還）。但 SECURITY-CAVEATS 也指出後台沒有真實 auth — 所以 approval 本身的「按下去那個人是誰」這層保證**還沒做完**。AI 產出企業級 workflow 時必確認 approver 身分驗證**真實存在**而不是假樁。
+
 ---
 
 ## 3. SDD（Specification-Driven Development）整合
