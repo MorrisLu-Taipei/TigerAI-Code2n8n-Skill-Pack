@@ -1,3 +1,5 @@
+> 📋 **Long-form audit**: see [`SECURITY-REVIEW.md`](SECURITY-REVIEW.md) for the full structured `n8n-security-governance` review (10 `SEC-###` findings with evidence/owner/target, chain analysis, BLOCKED decision rationale, release traceability, and rollback policy). This file is the public-facing short summary; that file is the underlying audit.
+
 # ⚠️ Security Caveats — DO NOT DEPLOY AS-IS
 
 > **本範例不是企業級可公開部署的實作。** 它是 Code2n8n 方法論的**教學標本**：用一個有缺陷的真實 POC 程式碼，示範移植到 n8n 時必須做的安全審查。**部署前必須修補以下問題**；否則任何網路上的存取者都能讀寫所有設定、金鑰、用戶狀態與 n8n credential 名單。

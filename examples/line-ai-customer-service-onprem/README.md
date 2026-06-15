@@ -6,7 +6,7 @@
 >
 > **本範例不可公開部署。** 上游 POC 程式碼有**零真實認證**（`/api/auth/me` 永遠回登入成功 + 所有 `/api/*` 資料路由完全裸奔）和 **SQL identifier injection**（`updateSettings` 把 request body 的 key 直接拼進 SQL）。明文密碼、無 CSRF / rate limit / audit log、n8n credential 名單外露⋯⋯
 >
-> **完整清單與重現方式見 [`SECURITY-CAVEATS.md`](SECURITY-CAVEATS.md)。**
+> **短版警告 → [`SECURITY-CAVEATS.md`](SECURITY-CAVEATS.md)；完整審查 → [`SECURITY-REVIEW.md`](SECURITY-REVIEW.md)**（10 個 SEC-### 結構化 finding + chain analysis + BLOCKED 決策書 + release traceability）。
 >
 > 我們**主動稽核並公開揭露**，而不靜悄悄打補丁 — 因為這些缺陷本身就是 Code2n8n 的教學重點（AI 寫的程式能跑 ≠ 能上線）。要上線請 fork 後依 SECURITY-CAVEATS 末段的 10 步驟硬化。
 >

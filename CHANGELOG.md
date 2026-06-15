@@ -1,5 +1,43 @@
 # Changelog
 
+## v0.24.0 — 補上「審查正例」+ 中文 hero v16
+
+四件套俱全：方法論（marquee `code-to-workflow`）+ skill（`n8n-security-governance`）+ 反例（`SECURITY-CAVEATS.md`）+ **正例（`SECURITY-REVIEW.md`）** 終於到齊。
+
+### 🆕 新檔：[`examples/line-ai-customer-service-onprem/SECURITY-REVIEW.md`](examples/line-ai-customer-service-onprem/SECURITY-REVIEW.md)
+
+`n8n-security-governance` 套到 BLOCKED 案例的**完整書面範本**。任何要為自家 Code2n8n 移植寫 SECURITY-REVIEW 的人可以照搬結構：
+
+- **10 條章節**：review metadata / scope+trust boundaries / mandatory check results / structured findings / chain analysis / decision / release traceability / rollback / cross-refs / re-review triggers
+- **13 個 entry 的 trust boundary 矩陣**：每個端點宣稱 vs 實際 auth 狀況逐項對照
+- **10 個 SEC-### 結構化 finding**：每筆含 Severity / Status / Evidence (file:line) / Impact / Reproduction / Required fix / Validation / Owner / Target version
+- **Chain analysis**：把單一缺陷如何串成「未認證任意 SQL 執行＋無 audit trail」一目了然
+- **正式 BLOCKED 決策**：列出再評估前必須完成的 10 項 deployment requirement
+- **8 個 dimension 評分**：8 FAIL / 2 PARTIAL / 1 PASS — 在任一 Critical 個別計分前就已 BLOCKED
+- 跟 `SECURITY-CAVEATS.md` 互補：caveats 是「短版警告」、review 是「長版審查書」
+
+### 🔗 周邊串接
+
+- `SECURITY-CAVEATS.md` 開頭加長版 review 連結
+- onprem README 改成「短版 → CAVEATS；完整 → REVIEW」雙連結
+
+### 🎨 中文 hero 升級
+
+- `docs/images/code2n8n-hero-zh.png` 換成 v16 user-master-remaster-native（解決 v15 字體蓋 logo 問題）
+- README.zh.md alt text 同步更新；中英 hero 現在都是 v16
+
+### 為什麼這版重要
+
+v0.22.2 揭露問題 → v0.23.0 提供 skill 規範 → **v0.24.0 提供「按 skill 跑出來的審查書長這樣」的可複製範本**。這三步把 Code2n8n 的「安全審查」從口號變成 SOP：
+
+| 抽象層次 | 兌現處 |
+| --- | --- |
+| 為什麼要做（manifesto） | `CODE2N8N.md` Demo ≠ Production 章 |
+| 怎麼做（methodology） | `code-to-workflow` Step 1.5 + hard rules §3/§8/§9 |
+| 用什麼做（skill） | `n8n-security-governance` 141 行 |
+| 反例（找到缺陷不修怎麼揭露） | `SECURITY-CAVEATS.md` |
+| **正例（完整審查書長什麼樣）** | **本次新增的 `SECURITY-REVIEW.md`** |
+
 ## v0.23.0 — 安全/治理 skill 落地 + 對著 hero 圖逐項補實證
 
 兌現 v0.22.2 安全揭露的下一步：把「Security Audit」從一行宣告升級為真正的 skill + 把 hero 圖每一格逐項對證並補上實際弱的地方。
