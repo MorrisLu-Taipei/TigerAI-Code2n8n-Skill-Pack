@@ -1,4 +1,4 @@
-# TigerAI Code2n8n Skill Pack 一鍵安裝（Windows PowerShell）
+﻿# TigerAI Code2n8n Skill Pack 一鍵安裝（Windows PowerShell）
 # 用法: .\install.ps1
 
 $ErrorActionPreference = 'Stop'
@@ -26,7 +26,7 @@ foreach ($Target in $Targets) {
   if (-not (Test-Path $Target)) { New-Item -ItemType Directory -Path $Target -Force | Out-Null }
 
   # 1. Vendor skills
-  Write-Host "→ 安裝 7 個官方 vendor skills..."
+  Write-Host "→ 安裝 6 個官方 vendor skills..."
   Get-ChildItem -Path (Join-Path $PackDir 'skills\_vendor') -Directory -Filter 'n8n-*' | ForEach-Object {
     $dest = Join-Path $Target $_.Name
     if (Test-Path $dest) { Remove-Item $dest -Recurse -Force }

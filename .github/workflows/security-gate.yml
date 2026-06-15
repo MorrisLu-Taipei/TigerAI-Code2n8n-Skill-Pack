@@ -1,0 +1,115 @@
+name: security-gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  manifest-consistency:
+    name: plugin.json ↔ skills/ on-disk consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Each manifest entry has a SKILL.md on disk
+        run: |
+          set -e
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+            const plugin = JSON.parse(fs.readFileSync('plugin.json','utf8'));
+            const missing = [];
+            for (const s of plugin.skills) {
+              const skillFile = path.join(s.path, 'SKILL.md');
+              if (!fs.existsSync(skillFile)) missing.push(skillFile);
+            }
+            if (missing.length) {
+              console.error('Missing SKILL.md for manifest entries:\n  ' + missing.join('\n  '));
+              process.exit(1);
+            }
+            console.log('OK — ' + plugin.skills.length + ' manifest entries all resolve on disk.');
+          "
+      - name: Every on-disk skill is registered in plugin.json
+        run: |
+          set -e
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+            const plugin = JSON.parse(fs.readFileSync('plugin.json','utf8'));
+            const registered = new Set(plugin.skills.map(s => s.path.replace(/\\\\/g,'/')));
+            const onDisk = [];
+            for (const root of ['skills/_vendor', 'skills/tigerai']) {
+              for (const d of fs.readdirSync(root)) {
+                const full = path.posix.join(root, d);
+                if (fs.existsSync(path.join(full, 'SKILL.md'))) onDisk.push(full);
+              }
+            }
+            const orphans = onDisk.filter(p => !registered.has(p));
+            if (orphans.length) {
+              console.error('Skills on disk not in plugin.json:\n  ' + orphans.join('\n  '));
+              process.exit(1);
+            }
+            console.log('OK — ' + onDisk.length + ' on-disk skills all registered.');
+          "
+
+  json-audit:
+    name: case-study workflow JSON lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Google Workspace admin audit
+        working-directory: examples/google-workspace-admin-workflow
+        run: node _audit.mjs
+      - name: LINE CS (cloud) audit
+        working-directory: examples/line-ai-customer-service
+        run: node _audit.mjs
+      - name: LINE CS (on-prem) workflow JSON parses
+        run: |
+          node -e "
+            const j = JSON.parse(require('fs').readFileSync('examples/line-ai-customer-service-onprem/n8n_workflow_export.json','utf8'));
+            if (!Array.isArray(j.nodes) || j.nodes.length < 1) { console.error('no nodes'); process.exit(1); }
+            console.log('on-prem brain: ' + j.nodes.length + ' nodes, ' + Object.keys(j.connections||{}).length + ' connection groups.');
+          "
+
+  secret-scan:
+    name: lightweight secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan for high-confidence secret patterns
+        run: |
+          set -e
+          patterns='sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{30,}|xox[baprs]-[A-Za-z0-9-]{10,}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----'
+          hits=$(git ls-files | grep -v -E '^(reference-workflows/|research/|tests/REPORT)' | xargs -I{} grep -lE "$patterns" "{}" 2>/dev/null || true)
+          if [ -n "$hits" ]; then
+            echo "Possible secrets:"
+            echo "$hits"
+            exit 1
+          fi
+          echo "OK — no high-confidence secret patterns outside vetted dirs."
+
+  installer-parse:
+    name: install.ps1 / install.sh parse check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: bash -n install.sh
+        run: bash -n install.sh
+      - name: install.ps1 has UTF-8 BOM (PowerShell 5.1 Chinese-safe)
+        run: |
+          set -e
+          head -c 3 install.ps1 | od -An -tx1 | tr -d ' \n' > /tmp/bom.hex
+          test "$(cat /tmp/bom.hex)" = "efbbbf" || { echo "install.ps1 missing UTF-8 BOM (got $(cat /tmp/bom.hex))"; exit 1; }
+          echo "OK — install.ps1 starts with EF BB BF."
+      - name: install.ps1 parses under PowerShell Core
+        shell: pwsh
+        run: |
+          $errors = $null
+          $tokens = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path ./install.ps1), [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+          Write-Host "OK — install.ps1 parses clean."

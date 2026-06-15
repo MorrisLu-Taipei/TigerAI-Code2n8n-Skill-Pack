@@ -29,7 +29,7 @@ for TARGET in "${TARGETS[@]}"; do
   mkdir -p "$TARGET"
 
   # 1. 拷貝 vendor skills
-  echo "→ 安裝 7 個官方 vendor skills..."
+  echo "→ 安裝 6 個官方 vendor skills..."
   for d in "$PACK_DIR/skills/_vendor"/n8n-*; do
     [ -d "$d" ] || continue
     name="$(basename "$d")"

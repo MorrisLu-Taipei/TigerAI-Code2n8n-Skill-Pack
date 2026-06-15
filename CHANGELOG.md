@@ -1,5 +1,42 @@
 # Changelog
 
+## v0.24.1 — 修正安裝器、補上 CI gate、刷新驗收證據
+
+v0.24.0 後使用者實際拿去裝，挖到一批會打臉「四件套俱全」的實作落差：Windows 安裝器無法解析、manifest 比磁碟多算一個 skill、`n8n-security-governance` 講的 CI/CD gate 在這個 repo 本身完全沒跑、驗收報告還停在 2026-05-05。這版把這四件一起補上。
+
+### 🩹 修：Windows 安裝器無法解析
+
+- `install.ps1` 重新以 UTF-8 **with BOM**（`EF BB BF`）儲存。原本沒有 BOM，PowerShell 5.1 用 Windows-1252 解中文，第 71 行雙引號被誤認沒收尾，整個檔案 parse fail，使用者根本裝不了。
+- `install.ps1` 與 `install.sh` 的 vendor skill 計數從硬寫的「7 個」改回「6 個」（磁碟上一直就是 6 個）。
+
+### 🩹 修：manifest 對齊磁碟
+
+- `plugin.json` 移掉 `skills/tigerai/install-tigerai-n8n-pack` 這個沒有對應目錄的孤兒 entry。對應的 `/install-n8n-pack` slash command 本來就放在 `.agent/workflows/install-pack.md`（Antigravity workflow），不是 skill。
+- skills 計數 15 → **14**；README / README.zh.md 全部跟著更新，並把 "manifest 15 / disk 14" 的已知落差註腳改成「`/install-n8n-pack` 是 workflow 不是 skill」的事實說明。
+
+### 🛡️ 新檔：[`.github/workflows/security-gate.yml`](.github/workflows/security-gate.yml)
+
+`n8n-security-governance` skill 講了一整段 CI/CD gate，但這個 repo 自己之前一條 workflow 都沒有。這版補上實際會跑的 gate：
+
+| Job | 卡什麼 |
+| --- | --- |
+| `manifest-consistency` | `plugin.json` 每筆都有 SKILL.md；每個磁碟 SKILL.md 都登錄。雙向比對。 |
+| `json-audit` | 跑 Google Workspace + LINE CS（雲）案例的 `_audit.mjs`、+ on-prem brain JSON 結構檢查。 |
+| `secret-scan` | OpenAI / AWS / GitHub / Slack token + PEM 私鑰 regex 掃描（排除 `reference-workflows/` 等已 scrub 目錄）。 |
+| `installer-parse` | `bash -n install.sh`；驗證 `install.ps1` 開頭是 `EF BB BF`；用 PowerShell Core `[Parser]::ParseFile` 確認可解析。 |
+
+故意先做窄而真實的版本：擋住本次三個已經發生過的 regression class，留 dependency CVE / container scan / 完整 n8n REST round-trip 給後續逐步補上。
+
+### 📋 新檔：[`tests/REPORT-v0.24.1-evidence.md`](tests/REPORT-v0.24.1-evidence.md)
+
+獨立的、有日期戳的 v0.24.1 驗收紀錄：installer parse 結果、manifest 雙向比對、三個案例 audit 輸出、CI gate 敘述、「這份報告**沒有**證明什麼」的誠實落差清單。原本的 [`REPORT-3.md`](tests/REPORT-3.md) 維持 2026-05-05 / v0.9.0 歷史 baseline，不被改寫。
+
+### 為什麼這版重要
+
+v0.24.0 的口號是「四件套俱全」。但「四件齊」的字面意義是文件齊，不代表使用者能可靠安裝、CI 真的會擋、manifest 跟磁碟對得起來。v0.24.1 是把那四件套**從文件層面落到實作層面**——installer 要真能跑、manifest 要真能對齊、CI 要真會擋、報告要真有日期。
+
+---
+
 ## v0.24.0 — 補上「審查正例」+ 中文 hero v16
 
 四件套俱全：方法論（marquee `code-to-workflow`）+ skill（`n8n-security-governance`）+ 反例（`SECURITY-CAVEATS.md`）+ **正例（`SECURITY-REVIEW.md`）** 終於到齊。
