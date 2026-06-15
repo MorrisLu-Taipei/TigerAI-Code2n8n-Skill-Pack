@@ -7,6 +7,10 @@
 
 ![TigerAI Code2n8n Skill Pack — Code2n8n hero（v16 user-master-remaster，中文版）](docs/images/code2n8n-hero-zh.png)
 
+> *圖中第三區的平台能力（SSO / IAM / 稽核日誌 / HA / Metrics / Source Control）由 n8n 與 n8n Enterprise 提供，不由本 Pack 實作。*
+>
+> 🎯 **一句話定位**：**TigerAI Code2n8n Skill Pack 是移植、審查與治理的方法包；n8n 與 n8n Enterprise 才是實際承載企業能力的平台。**
+
 > 📊 **一張圖看懂**：自然語言需求或既有程式系統 → Code2n8n Skill Pack（Cookbook + 2,061 參考 workflow + DSL v1.2 + 14 個 Skill + 4 大企業模式）→ 分析哪些邏輯留在程式、哪些上升為 n8n 節點 → 產出可檢查、可交接、可跨系統編排的 workflow。
 > *by n8n Taipei Ambassador Morris Lu*
 

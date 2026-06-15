@@ -7,6 +7,10 @@
 
 ![TigerAI Code2n8n Skill Pack — Code2n8n hero (v16 user-remaster)](docs/images/code2n8n-hero-en.png)
 
+> *Platform capabilities (SSO / IAM / Audit Log / HA / Metrics / Source Control) provided by n8n & n8n Enterprise — not by this Pack.*
+>
+> 🎯 **One-sentence positioning**: **TigerAI Code2n8n Skill Pack is a porting / review / governance methodology pack; n8n & n8n Enterprise are the platforms that actually carry the enterprise capabilities.**
+
 > 📊 **The whole pack in one picture**: Natural-language intent *or* an existing program system → Code2n8n Skill Pack (Cookbook + 2,061 reference workflows + DSL v1.2 + **14 skills** + 4 enterprise patterns) → decides what logic stays as code vs lifts into an n8n node → emits a reviewable, hand-off-able, cross-system n8n workflow.
 > *by n8n Taipei Ambassador Morris Lu*
 

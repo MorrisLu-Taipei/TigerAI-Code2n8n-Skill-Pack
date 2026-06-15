@@ -2,6 +2,8 @@
 
 > Companion to [`enterprise-setup.md`](enterprise-setup.md). That doc draws the boundary; this one rates **how far each box in the hero diagram is actually shipped**.
 
+> 🎯 **One-sentence positioning**: TigerAI Code2n8n Skill Pack is a **porting / review / governance methodology pack**; **n8n & n8n Enterprise** are the platforms that actually carry the enterprise capabilities. The hero diagram's third block (SSO / IAM / Audit Log / HA / Metrics / Source Control) belongs to n8n Enterprise, not to this Pack.
+
 The hero diagram makes claims across four layers. This page tells you, per claim, who owns it and how complete it is **as of v0.24.1**. Honest evidence beats inflated evidence — if a row says "partial," that's the truth, not a hedge.
 
 ---
@@ -33,6 +35,8 @@ The Pack does **not** reimplement what n8n Enterprise already ships, and does **
 | Logs, Alerts, Observability | Design requirements stated | ⛔ Execution belongs to n8n + monitoring stack + IT |
 | SSO, IAM, HA, Audit Log | — | ⛔ n8n Enterprise — Pack should not implement |
 | ERP / CRM / DB / SaaS / LLM integration | Design guidance on how to use them | ⛔ Actual integration = n8n nodes |
+| 2,061 reference workflows | Search-and-design corpus mined from [Zie619/n8n-workflows](https://github.com/Zie619/n8n-workflows) (MIT, secrets scrubbed) | 🟡 Reference material — **not** all of them have been imported into n8n or validated in a production environment |
+| Hero PNG self-attribution | README captions now state the Pack/n8n/Enterprise split; PNG itself does not yet bake in the "Platform capabilities by n8n / n8n Enterprise" subtext | 🟡 Re-render planned for v0.25 — until then, the README caption carries that line so the image is not stranded if it gets shared standalone |
 
 Legend: ✅ done · 🟡 partial / in progress · ⛔ explicitly out of Pack scope (owned elsewhere)
 
