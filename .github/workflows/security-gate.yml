@@ -90,26 +90,40 @@ jobs:
           echo "OK — no high-confidence secret patterns outside vetted dirs."
 
   installer-parse:
-    name: install.ps1 / install.sh parse check
+    name: install / uninstall scripts — parse + dry-run
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: bash -n install.sh
-        run: bash -n install.sh
-      - name: install.ps1 has UTF-8 BOM (PowerShell 5.1 Chinese-safe)
+      - name: bash -n install.sh / uninstall.sh
+        run: |
+          bash -n install.sh
+          bash -n uninstall.sh
+      - name: install.ps1 / uninstall.ps1 have UTF-8 BOM (PowerShell 5.1 Chinese-safe)
         run: |
           set -e
-          head -c 3 install.ps1 | od -An -tx1 | tr -d ' \n' > /tmp/bom.hex
-          test "$(cat /tmp/bom.hex)" = "efbbbf" || { echo "install.ps1 missing UTF-8 BOM (got $(cat /tmp/bom.hex))"; exit 1; }
-          echo "OK — install.ps1 starts with EF BB BF."
-      - name: install.ps1 parses under PowerShell Core
+          for f in install.ps1 uninstall.ps1; do
+            head -c 3 "$f" | od -An -tx1 | tr -d ' \n' > /tmp/bom.hex
+            test "$(cat /tmp/bom.hex)" = "efbbbf" || { echo "$f missing UTF-8 BOM (got $(cat /tmp/bom.hex))"; exit 1; }
+            echo "OK — $f starts with EF BB BF."
+          done
+      - name: install.ps1 / uninstall.ps1 parse under PowerShell Core
         shell: pwsh
         run: |
-          $errors = $null
-          $tokens = $null
-          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path ./install.ps1), [ref]$tokens, [ref]$errors) | Out-Null
-          if ($errors.Count -gt 0) {
-            $errors | ForEach-Object { Write-Error $_.Message }
-            exit 1
+          foreach ($f in @('install.ps1','uninstall.ps1')) {
+            $errors = $null; $tokens = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path "./$f"), [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error $_.Message }
+              exit 1
+            }
+            Write-Host "OK — $f parses clean."
           }
-          Write-Host "OK — install.ps1 parses clean."
+      - name: install.sh --dry-run --target claude (smoke)
+        run: bash install.sh --target claude --dry-run | tail -5
+      - name: uninstall.sh --dry-run --target claude (smoke)
+        run: bash uninstall.sh --target claude --dry-run | tail -5
+      - name: install.ps1 / uninstall.ps1 --dry-run smoke (pwsh)
+        shell: pwsh
+        run: |
+          ./install.ps1 -Target claude -DryRun | Select-Object -Last 5
+          ./uninstall.ps1 -Target claude -DryRun | Select-Object -Last 5

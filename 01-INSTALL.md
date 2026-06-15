@@ -24,7 +24,19 @@ bash install.sh
 - Claude Code：`~/.claude/skills/`
 - Antigravity：`~/.gemini/antigravity/global_skills/`
 
-（兩者皆不存在時 fallback 到 Claude。）目前還沒有 `--dry-run` 或指定單一目標的旗標，v0.25 預計補上。重複執行是安全的：已存在的 skill 目錄會原地覆寫。
+（兩者皆不存在時 fallback 到 Claude。）重複執行是安全的：已存在的 skill 目錄會移除後重拷。安裝結束自動驗證 **14/14** skill 目錄都到位，缺一個就 exit 非零。
+
+### 旗標
+
+| 旗標 | 效果 |
+| --- | --- |
+| `--target claude` | 只裝 Claude |
+| `--target antigravity` | 只裝 Antigravity |
+| `--target all` | 預設值，全裝 |
+| `--dry-run` | 印出所有動作但不寫入檔案系統 |
+| `--help` | 顯示用法 |
+
+PowerShell 版本對應的旗標是 `-Target` / `-DryRun` / `-Help`。
 
 ## Antigravity 專屬安裝（極速）
 
@@ -98,38 +110,20 @@ N8N_API_KEY="你的-n8n-api-key"
 
 ## 解除安裝
 
-**目前沒有官方 `uninstall.sh`**（v0.25 預計補上）。下列手動清除涵蓋安裝腳本寫入的所有檔案：
+`uninstall.sh` / `uninstall.ps1` 對齊 installer — 一樣支援 `--target` / `--dry-run` / `--help` 旗標。會移除安裝腳本寫入的 **14 個 skill 目錄 + `_tigerai-pack-shared/`**，不存在的會靜默跳過。
 
 ```bash
-# Vendor skills（6 個）
-rm -rf ~/.claude/skills/n8n-expression-syntax
-rm -rf ~/.claude/skills/n8n-workflow-patterns
-rm -rf ~/.claude/skills/n8n-validation-expert
-rm -rf ~/.claude/skills/n8n-node-configuration
-rm -rf ~/.claude/skills/n8n-code-javascript
-rm -rf ~/.claude/skills/n8n-code-python
-
-# TigerAI skills（8 個）
-rm -rf ~/.claude/skills/sticky-note-to-workflow
-rm -rf ~/.claude/skills/n8n-api-bridge
-rm -rf ~/.claude/skills/tigerai-enterprise-patterns
-rm -rf ~/.claude/skills/tigerai-qa-mode
-rm -rf ~/.claude/skills/tigerai-example-finder
-rm -rf ~/.claude/skills/code-to-workflow
-rm -rf ~/.claude/skills/n8n-security-governance
-rm -rf ~/.claude/skills/n8n-code-to-native
-
-# 安裝腳本鏡像的共用參考目錄
-rm -rf ~/.claude/skills/_tigerai-pack-shared
-
-# Antigravity 對應路徑（如果你也裝在這邊才需要刪）
-rm -rf ~/.gemini/antigravity/global_skills/n8n-*
-rm -rf ~/.gemini/antigravity/global_skills/sticky-note-* \
-       ~/.gemini/antigravity/global_skills/tigerai-* \
-       ~/.gemini/antigravity/global_skills/code-to-workflow \
-       ~/.gemini/antigravity/global_skills/n8n-security-governance \
-       ~/.gemini/antigravity/global_skills/n8n-code-to-native \
-       ~/.gemini/antigravity/global_skills/_tigerai-pack-shared
+# Linux / macOS / WSL
+bash uninstall.sh                        # 移除所有偵測到的目標
+bash uninstall.sh --target claude        # 只清 Claude
+bash uninstall.sh --dry-run              # 預覽，不動檔案系統
 ```
 
-只用 wildcards（`n8n-*` / `tigerai-*` / `sticky-note-*`）會漏掉 `code-to-workflow` 和 `_tigerai-pack-shared`，所以上面是故意列得很明白。
+```powershell
+# Windows PowerShell
+.\uninstall.ps1                          # 移除所有偵測到的目標
+.\uninstall.ps1 -Target antigravity      # 只清 Antigravity
+.\uninstall.ps1 -DryRun                  # 預覽
+```
+
+要手動拆的話，uninstaller 的 source 裡有明確列出 14 個 skill 名 + `_tigerai-pack-shared` — 直接看那份名單最準。

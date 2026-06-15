@@ -22,11 +22,23 @@ bash install.sh
 .\install.ps1
 ```
 
-The script will write to **every detected target** under your home directory — currently:
+The script writes to **every detected target** under your home directory — currently:
 - Claude Code: `~/.claude/skills/`
 - Antigravity: `~/.gemini/antigravity/global_skills/`
 
-(If neither directory exists, it defaults to Claude.) There is no `--dry-run` or per-target flag yet — that's on the v0.25 roadmap. Re-running is safe: existing skill folders are overwritten in place.
+(If neither parent directory exists, it defaults to Claude.) Re-running is safe: existing skill folders are removed and recopied. Post-install verifies that **14/14** skill folders landed in each target and exits non-zero if any are missing.
+
+### Flags
+
+| Flag | Effect |
+| --- | --- |
+| `--target claude` | Install into Claude only |
+| `--target antigravity` | Install into Antigravity only |
+| `--target all` | Default — install into all detected targets |
+| `--dry-run` | Print every filesystem action without performing it |
+| `--help` | Show usage |
+
+PowerShell uses `-Target` / `-DryRun` / `-Help` (PowerShell-style switches).
 
 ## Antigravity Exclusive Install (Fastest)
 
@@ -98,40 +110,22 @@ If the skills do not trigger: re-run the installer, restart your Claude Code / A
 
 ## Uninstall
 
-There is **no official `uninstall.sh` yet** (planned for v0.25). The manual cleanup below removes everything the installer wrote:
+`uninstall.sh` / `uninstall.ps1` mirror the installer — same `--target` / `--dry-run` / `--help` flags. Both remove the **14 skill folders + `_tigerai-pack-shared/`** the installer wrote, and silently skip anything not present.
 
 ```bash
-# Vendor skills (6)
-rm -rf ~/.claude/skills/n8n-expression-syntax
-rm -rf ~/.claude/skills/n8n-workflow-patterns
-rm -rf ~/.claude/skills/n8n-validation-expert
-rm -rf ~/.claude/skills/n8n-node-configuration
-rm -rf ~/.claude/skills/n8n-code-javascript
-rm -rf ~/.claude/skills/n8n-code-python
-
-# TigerAI skills (8)
-rm -rf ~/.claude/skills/sticky-note-to-workflow
-rm -rf ~/.claude/skills/n8n-api-bridge
-rm -rf ~/.claude/skills/tigerai-enterprise-patterns
-rm -rf ~/.claude/skills/tigerai-qa-mode
-rm -rf ~/.claude/skills/tigerai-example-finder
-rm -rf ~/.claude/skills/code-to-workflow
-rm -rf ~/.claude/skills/n8n-security-governance
-rm -rf ~/.claude/skills/n8n-code-to-native
-
-# Shared reference materials the installer dropped
-rm -rf ~/.claude/skills/_tigerai-pack-shared
-
-# Antigravity equivalents (delete only if you installed there too)
-rm -rf ~/.gemini/antigravity/global_skills/n8n-*
-rm -rf ~/.gemini/antigravity/global_skills/sticky-note-* \
-       ~/.gemini/antigravity/global_skills/tigerai-* \
-       ~/.gemini/antigravity/global_skills/code-to-workflow \
-       ~/.gemini/antigravity/global_skills/n8n-security-governance \
-       ~/.gemini/antigravity/global_skills/n8n-code-to-native \
-       ~/.gemini/antigravity/global_skills/_tigerai-pack-shared
+# Linux / macOS / WSL
+bash uninstall.sh                        # remove from all detected targets
+bash uninstall.sh --target claude        # remove from Claude only
+bash uninstall.sh --dry-run              # preview, do not touch the filesystem
 ```
 
-Wildcards alone (`n8n-*` / `tigerai-*` / `sticky-note-*`) miss `code-to-workflow` and `_tigerai-pack-shared`, so the script above is intentionally explicit.
+```powershell
+# Windows PowerShell
+.\uninstall.ps1                          # remove from all detected targets
+.\uninstall.ps1 -Target antigravity      # remove from Antigravity only
+.\uninstall.ps1 -DryRun                  # preview, do not touch the filesystem
+```
+
+If you prefer to do it by hand, the uninstaller maintains an explicit list of the 14 skill folders + `_tigerai-pack-shared` — read its source for the exact paths.
 
 ## Next: [02-USAGE-MODES.en.md](02-USAGE-MODES.en.md)

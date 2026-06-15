@@ -1,5 +1,50 @@
 # Changelog
 
+## v0.25.0 — 把 responsibility-matrix 的 4 個 🟡 backlog 全部結清
+
+v0.24.2 把文件落差掃乾淨，但責任矩陣裡還留 4 個 🟡（hero PNG 沒燒字、installer 沒旗標、沒 dry-run、沒官方 uninstall）。這版一次結清。
+
+### 🆕 installer / uninstaller 改版
+
+`install.sh`、`install.ps1`、`uninstall.sh`、`uninstall.ps1` 四支腳本同步加上：
+
+| 旗標 | 行為 |
+| --- | --- |
+| `--target claude\|antigravity\|all` | 指定單一目標或全部 |
+| `--dry-run` | 印出所有 fs 動作但不寫入 |
+| `--help` / `-h` | 用法 |
+
+`install.*` 完成後自動驗證 **14/14** skill 目錄到位，缺一個就 exit 非零。`uninstall.*` 鏡像 installer 的 manifest，明確列出 14 個 skill + `_tigerai-pack-shared` — 不存在的會靜默跳過。PowerShell 兩支都用 UTF-8 BOM 儲存，PS 5.1 不會再炸。
+
+### 🎨 Hero PNG 燒字
+
+新增 [`scripts/stamp-hero.ps1`](scripts/stamp-hero.ps1)（PowerShell + `System.Drawing`）把 "Platform capabilities (SSO / IAM / Audit Log / HA / Metrics / Source Control) provided by n8n & n8n Enterprise — not by this Pack." 燒進英文版 hero 圖底部灰條；中文版同款翻譯。圖被單獨轉傳時，責任邊界跟著走，README caption 不再是唯一防線。
+
+### 🛡️ CI gate 跟進
+
+`.github/workflows/security-gate.yml` 的 installer-parse job 擴充成 install + uninstall 都要過：
+
+- `bash -n` 雙腳本
+- 兩支 `.ps1` 都檢查 BOM (`EF BB BF`)
+- 兩支 `.ps1` 都跑 `[Parser]::ParseFile`
+- 四支腳本都跑 `--dry-run --target claude` smoke test
+
+### 🩹 周邊清理
+
+- `plugin.json` 加上 `uninstall_scripts` 條目
+- `docs/responsibility-matrix.md` 的 hero PNG row 與 installer ergonomics row 改成 ✅
+- 兩種語言 README hero caption 拿掉「Platform capabilities... provided by n8n & n8n Enterprise」那句（已燒進圖裡），保留一句話定位
+
+### Backlog 結餘
+
+剩下未處理（誠實揭露，留 v0.26 以後再看）：
+- Production Validation 自動化（live n8n + credentials 上端對端 round-trip）
+- Security 自動掃描器（目前還是 SOP + checklist）
+- 完整 CI/CD（GitLab、dep CVE、container scan）
+- Retry / Approval / Handover 的 drop-in importable workflow 模板
+
+---
+
 ## v0.24.2 — 刷掉 v0.24.1 沒清乾淨的文件落差
 
 v0.24.1 把 installer + manifest + CI gate + evidence 收齊，但使用者再做一輪 audit 又挖到一批「文件還停留在舊版」的中度落差。這版只動文件、不動程式碼，把所有跟事實對不上的字眼一次刷掉。
