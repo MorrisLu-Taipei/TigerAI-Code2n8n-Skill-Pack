@@ -1,5 +1,41 @@
 # Changelog
 
+## v0.26.2 — 新案例：FB 每日廣告 4-workflow 治理鏈
+
+直接以 Pack 的方法論（Partition / Workflow Design / Validation / Security）寫一條 FB 每日廣告投放管理範例，**並用 v0.26.0 的三個 enterprise template 當骨架**。實證模板可被組合，不只是擺好看的。
+
+### 🆕 [`examples/fb-daily-ads/`](examples/fb-daily-ads/)
+
+四份可 import 的 workflow JSON + 一張 README：
+
+| Workflow | 角色 | 拿哪個模板當骨架 |
+| --- | --- | --- |
+| `fb-daily-pull.workflow.json` | Schedule 09:00 → FB Insights → Google Sheet | — |
+| `fb-daily-decide.workflow.json` | 從 Sheet 讀規則 → 套規則 → 建議清單 | — |
+| `fb-daily-approve.workflow.json` | Slack 核可關卡 + Wait + resume | [`human-approval-gate`](examples/templates/human-approval-gate.workflow.json) |
+| `fb-daily-apply.workflow.json` | 推 FB Marketing API + 寫稽核 | [`retry-with-backoff`](examples/templates/retry-with-backoff.workflow.json) + [`handover-trace`](examples/templates/handover-trace.workflow.json) |
+
+每份 workflow 含結構化 sticky note 標示：模式定義、上線前要改的 `__REPLACE_ME__*` placeholder、滿足 SECGOV 哪幾條。
+
+### ✅ 驗證紀錄
+
+- **Scanner**：`node scripts/security-scan.mjs --glob "examples/fb-daily-ads/*.workflow.json"` → **4 files · 0 error · 0 warning**
+- **Live REST round-trip**（localhost:5678 受管 n8n）：
+  ```
+  OK   fb-daily-apply    (id=GutZKi4BC4jX9EpM, nodes=11)
+  OK   fb-daily-approve  (id=5S6Nh3BYWBNMz9fy, nodes=8)
+  OK   fb-daily-decide   (id=4VxdFnXistC4UV0b, nodes=8)
+  OK   fb-daily-pull     (id=R0Ph148hj1I0zixc, nodes=9)
+  Summary: 4/4 ok · tag=claude-import-2026-06-17
+  ```
+  Post-test workflows 已被 DELETE，instance 乾淨。
+
+### 為什麼這版重要
+
+v0.26.0 把三個 template 丟出去當 drop-in。v0.26.2 證明它們**可以被組合成真實案例**：approve 直接拿 human-approval-gate 改 ad-domain 語意；apply 同時內嵌 retry-with-backoff + handover-trace。Code2n8n 不是「我們有方法論」，是「方法論套出來就長這樣」。
+
+---
+
 ## v0.26.1 — 三層審查（自己 / 工程師 / 酸民）的防守強化
 
 v0.26.0 把矩陣 🟡 結清。0.26.1 不加功能，把整套敘事的「容易被打 / 容易被誤讀」的點全部硬化。
