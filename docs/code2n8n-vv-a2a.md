@@ -1,5 +1,9 @@
 # Code2n8n V&V — A2A directive (AI consumers read this first)
 
+> 🌐 **Languages**: **English** · [中文](code2n8n-vv-a2a.zh.md) · [日本語](code2n8n-vv-a2a.ja.md) · [한국어](code2n8n-vv-a2a.ko.md) · [Français](code2n8n-vv-a2a.fr.md) · [Deutsch](code2n8n-vv-a2a.de.md) · [Español](code2n8n-vv-a2a.es.md) · [Tiếng Việt](code2n8n-vv-a2a.vi.md) · [ภาษาไทย](code2n8n-vv-a2a.th.md) · [Bahasa Melayu](code2n8n-vv-a2a.ms.md) · [Bahasa Indonesia](code2n8n-vv-a2a.id.md)
+>
+> 🌐 If you (the consuming AI agent) operate primarily in a language not listed above, use English as the canonical version — it is the source of truth; translations are convenience copies kept in sync per release.
+
 > 🤖 **Audience**: this document is written for **AI agents** (Claude Code / Codex / Antigravity / any LLM) executing Code2n8n flows. Human reviewers should read [`code2n8n-vv-checklist.md`](code2n8n-vv-checklist.md) instead — it's the same gate translated for humans.
 >
 > The companion document `code2n8n-vv-checklist.md` is the human-oriented version (boxes to tick, paragraphs explaining why). This file is the **machine-actionable directive**: deterministic triggers, required tool invocations, exact output schemas, forbidden phrases. Treat the rules below as load-bearing — not advisory.

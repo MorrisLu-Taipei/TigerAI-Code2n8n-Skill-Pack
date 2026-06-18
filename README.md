@@ -9,7 +9,10 @@
 
 > 🎯 **One-sentence positioning**: **This Pack is a porting / review / validation / governance method. n8n editions + your IT carry the enterprise platform capabilities.**
 >
-> 🤖 **AI agent consuming this Pack?** Read [`docs/code2n8n-vv-a2a.md`](docs/code2n8n-vv-a2a.md) **before** running any Code2n8n flow. It is the A2A (AI-to-AI) directive that gates when you may use the words "validated" / "tested" / "production-ready", what tools you must invoke, what evidence schema you must emit, and what phrases are forbidden until the gate passes. Skipping it produced the v0.27.0 incident captured in [`examples/einvoice-n8n/REFLECTION.md`](examples/einvoice-n8n/REFLECTION.md). Human reviewers use [`docs/code2n8n-vv-checklist.md`](docs/code2n8n-vv-checklist.md) instead.
+> 🤖 **AI agent consuming this Pack?** Read the **A2A (AI-to-AI) directive** before running any Code2n8n flow. It is available in 11 languages — every consuming LLM gets the gate in its primary language so the deterministic triggers and forbidden-phrase tables actually fire:
+> [English](docs/code2n8n-vv-a2a.md) · [中文](docs/code2n8n-vv-a2a.zh.md) · [日本語](docs/code2n8n-vv-a2a.ja.md) · [한국어](docs/code2n8n-vv-a2a.ko.md) · [Français](docs/code2n8n-vv-a2a.fr.md) · [Deutsch](docs/code2n8n-vv-a2a.de.md) · [Español](docs/code2n8n-vv-a2a.es.md) · [Tiếng Việt](docs/code2n8n-vv-a2a.vi.md) · [ภาษาไทย](docs/code2n8n-vv-a2a.th.md) · [Bahasa Melayu](docs/code2n8n-vv-a2a.ms.md) · [Bahasa Indonesia](docs/code2n8n-vv-a2a.id.md).
+>
+> The directive gates when you may use the words "validated" / "tested" / "production-ready", what tools you must invoke, what evidence schema you must emit, and what phrases are forbidden until the gate passes. Skipping it produced the v0.27.0 incident captured in [`examples/einvoice-n8n/REFLECTION.md`](examples/einvoice-n8n/REFLECTION.md). Human reviewers use [`docs/code2n8n-vv-checklist.md`](docs/code2n8n-vv-checklist.md) instead.
 
 ### What this Pack is — and what it is not
 

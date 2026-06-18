@@ -9,7 +9,10 @@
 
 > 🎯 **一句話定位**：**本 Pack 是移植 / 審查 / 驗證 / 治理的「方法包」；n8n 版本 + 企業 IT 才承載企業平台能力。**
 >
-> 🤖 **AI agent 要使用本 Pack？** 跑任何 Code2n8n 流程**之前**，先讀 [`docs/code2n8n-vv-a2a.md`](docs/code2n8n-vv-a2a.md)。這份是 A2A（AI-to-AI）指令，明確規範：什麼時候才可以說「驗證通過 / 已測試 / 可上線」、要跑哪些工具、要產什麼 evidence schema、哪些詞彙在通過 gate 前是禁用的。跳過這個 gate 就是 v0.27.0 出事的原因，紀錄在 [`examples/einvoice-n8n/REFLECTION.md`](examples/einvoice-n8n/REFLECTION.md)。**人類** reviewer 改讀 [`docs/code2n8n-vv-checklist.md`](docs/code2n8n-vv-checklist.md)。
+> 🤖 **AI agent 要使用本 Pack？** 跑任何 Code2n8n 流程**之前**，先讀 **A2A（AI-to-AI）指令**。提供 11 種語言，讓不同主要語言的 LLM 都能讀到母語版本、deterministic trigger 跟禁用詞表才會在那個語言的 prompt pattern 觸發：
+> [English](docs/code2n8n-vv-a2a.md) · [中文](docs/code2n8n-vv-a2a.zh.md) · [日本語](docs/code2n8n-vv-a2a.ja.md) · [한국어](docs/code2n8n-vv-a2a.ko.md) · [Français](docs/code2n8n-vv-a2a.fr.md) · [Deutsch](docs/code2n8n-vv-a2a.de.md) · [Español](docs/code2n8n-vv-a2a.es.md) · [Tiếng Việt](docs/code2n8n-vv-a2a.vi.md) · [ภาษาไทย](docs/code2n8n-vv-a2a.th.md) · [Bahasa Melayu](docs/code2n8n-vv-a2a.ms.md) · [Bahasa Indonesia](docs/code2n8n-vv-a2a.id.md)。
+>
+> 指令明確規範：什麼時候才可以說「驗證通過 / 已測試 / 可上線」、要跑哪些工具、要產什麼 evidence schema、哪些詞彙在通過 gate 前是禁用的。跳過這個 gate 就是 v0.27.0 出事的原因，紀錄在 [`examples/einvoice-n8n/REFLECTION.md`](examples/einvoice-n8n/REFLECTION.md)。**人類** reviewer 改讀 [`docs/code2n8n-vv-checklist.md`](docs/code2n8n-vv-checklist.md)。
 
 ### 本 Pack 是 / 不是什麼
 

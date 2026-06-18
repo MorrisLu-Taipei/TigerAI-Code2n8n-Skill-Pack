@@ -1,5 +1,45 @@
 # Changelog
 
+## v0.29.0 — A2A 指令全 9 語系本土化（11 種語言總計）
+
+v0.28.1 出 A2A 指令但只有英文。給 AI 用的文件必須在目標 LLM 的主要語言才能可靠觸發那個語言下的 prompt pattern：「validated」/「驗證通過」/「検証済み」/「validé」是不同 token，禁用詞表必須有對應語言的字才能擋住。
+
+### 🆕 9 個新翻譯 + 中文版
+
+10 個新翻譯檔，加上英文原版 = **11 種語言**：
+
+| 語言 | 檔案 |
+| --- | --- |
+| 中文 | [`docs/code2n8n-vv-a2a.zh.md`](docs/code2n8n-vv-a2a.zh.md) |
+| 日本語 | [`docs/code2n8n-vv-a2a.ja.md`](docs/code2n8n-vv-a2a.ja.md) |
+| 한국어 | [`docs/code2n8n-vv-a2a.ko.md`](docs/code2n8n-vv-a2a.ko.md) |
+| Français | [`docs/code2n8n-vv-a2a.fr.md`](docs/code2n8n-vv-a2a.fr.md) |
+| Deutsch | [`docs/code2n8n-vv-a2a.de.md`](docs/code2n8n-vv-a2a.de.md) |
+| Español | [`docs/code2n8n-vv-a2a.es.md`](docs/code2n8n-vv-a2a.es.md) |
+| Tiếng Việt | [`docs/code2n8n-vv-a2a.vi.md`](docs/code2n8n-vv-a2a.vi.md) |
+| ภาษาไทย | [`docs/code2n8n-vv-a2a.th.md`](docs/code2n8n-vv-a2a.th.md) |
+| Bahasa Melayu | [`docs/code2n8n-vv-a2a.ms.md`](docs/code2n8n-vv-a2a.ms.md) |
+| Bahasa Indonesia | [`docs/code2n8n-vv-a2a.id.md`](docs/code2n8n-vv-a2a.id.md) |
+
+每份翻譯保留：
+- **完全相同**的工具呼叫指令（code block 不翻譯，跨語言一致）
+- **完全相同**的 evidence schema（PASS/FAIL/PENDING 用英文，downstream 機械驗證可用）
+- **本土化**的禁用詞表 — 含目標語言的「validated 同義詞」（如「驗證通過」「検証済み」「validé」「validiert」等）+ 各語言常見的弱化用語（「應該可以」「sollte funktionieren」「devrait marcher」「sollte sebaiknya」）
+- **本土化**的禁用詞替代詞（用該語言寫的）
+
+英文版為 source of truth，翻譯按 release 同步。
+
+### 🩹 周邊串接
+
+- 兩種語言 README hero callout 從「讀 a2a.md」擴成「11 種語言一覽 + 一行說明」
+- 每個翻譯檔頂部都有完整語言切換器
+
+### 為什麼這版重要
+
+A2A directive 的核心機制是 **deterministic trigger phrase**。如果一個日文 LLM 看到的指令是英文寫「validated 是禁用詞」，它不會把「検証済み」當成同義詞攔下來。本土化版本讓**指令的攔截網跟著 LLM 的母語走**，不留語言縫隙。
+
+---
+
 ## v0.28.1 — V&V gate 的 A2A 版本（給 AI 用，不再只是人用）
 
 使用者指出：「整個 Pack 是給 AI 使用的，V&V SOP 寫成『給人 print 出來 tick』搞錯對象」。確實 — v0.28.0 出 `code2n8n-vv-checklist.md` 是人類版本。AI agent 讀那份會把它當參考資料、不會當強制指令。
