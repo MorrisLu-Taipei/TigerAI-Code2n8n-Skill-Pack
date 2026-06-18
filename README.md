@@ -26,7 +26,7 @@
 
 Receipts for the ✅ column: [`docs/responsibility-matrix.md`](docs/responsibility-matrix.md) (status per claim) and [`tests/REPORT-v0.24.1-evidence.md`](tests/REPORT-v0.24.1-evidence.md) (fresh dated evidence).
 
-> 📊 **The whole pack in one picture**: Natural-language intent *or* an existing program system → Code2n8n Skill Pack (Cookbook + 2,061 reference workflows *as a design-lookup corpus, not validated templates* + DSL v1.2 + **14 skills** + 4 enterprise patterns) → decides what logic stays as code vs lifts into an n8n node → emits a reviewable, hand-off-able, cross-system n8n workflow.
+> 📊 **The whole pack in one picture**: Natural-language intent *or* an existing program system → Code2n8n Skill Pack (Cookbook + 2,061 reference workflows *as a design-lookup corpus, not validated templates* + DSL v1.2 + **15 skills** + 4 enterprise patterns) → decides what logic stays as code vs lifts into an n8n node → emits a reviewable, hand-off-able, cross-system n8n workflow.
 > *by n8n Taipei Ambassador Morris Lu*
 
 ---
@@ -85,7 +85,7 @@ This Skill Pack is itself a working demo of **Agentic Engineering**:
 
 ### Agentic footprints in this repo
 
-- **`skills/`** — `plugin.json` registers **14 Claude Code / Antigravity skills**; each `SKILL.md` is co-authored by humans and AI
+- **`skills/`** — `plugin.json` registers **15 Claude Code / Antigravity skills** (incl. v0.30.0 `code2n8n-pipeline` auto-pilot); each `SKILL.md` is co-authored by humans and AI
 - **`.agent/workflows/`** — Antigravity-native agentic workflows (e.g. `/install-n8n-pack` one-shot installer)
 - **`cookbook/`** — 8 natural-language → workflow examples showing how to "talk to" the AI
 - **`spec/sticky-note-three-layer.md`** — Three-layer structure spec that forces reviewable AI output
@@ -193,7 +193,7 @@ TigerAI-Code2n8n-Skill-Pack/
 ├── cookbook/                  ← 8 copy-paste recipes (each has plain-language + DSL fold)
 │   └── 00-INDEX.md/.en.md
 │
-├── skills/                    ← 14 skills (plugin.json manifest matches on-disk)
+├── skills/                    ← 15 skills (plugin.json manifest matches on-disk)
 │   ├── _vendor/                  6 vendor n8n-skills (MIT)
 │   └── tigerai/                  8 TigerAI execution skills
 │       ├── code-to-workflow/        ← Marquee: existing code / system → n8n

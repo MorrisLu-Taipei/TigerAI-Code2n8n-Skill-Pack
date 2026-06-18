@@ -1,5 +1,61 @@
 # Changelog
 
+## v0.30.0 — 新 SKILL：`code2n8n-pipeline`（Path B 自動駕駛 / main-critic 雙 agent）
+
+把 Code2n8n Path B 從「使用者帶著 AI 跑」升級為「丟 GitHub repo → AI 自己跑完 12 階段 → 出完工報告」的 auto-pilot SKILL。**不是執行案子**，是寫**規格**讓未來案子進來時 AI 自動啟動本 SKILL。
+
+### 🆕 [`skills/tigerai/code2n8n-pipeline/SKILL.md`](skills/tigerai/code2n8n-pipeline/SKILL.md)
+
+**啟動條件**（任一即觸發、無需指名 SKILL）：
+- 使用者貼 `github.com/<owner>/<repo>` + 任何 n8n / Code2n8n 意圖
+- 啟動命令（中 / 英）：「啟動 Path B 計劃」「Code2n8n 跑這個 repo」「把這個 repo 做成 n8n」「auto-pilot Path B」「pipeline this MIT repo」「make this n8n」 等
+
+**架構**：main agent 執行、sub agent（fresh context、無歷史）做 critic 並有 VETO 權 — 就是 v0.27.0 出包時「另一個 AI 抓到 5 個 bug」的同一機制，這次**結構化進 pipeline**而非仰賴使用者手動發起。
+
+**12 階段**：
+0. License gate（非 MIT 立刻 BLOCKED）
+1. Inventory
+2. Partition（Connector / Plugin / runtime Sub-agent 三選一）
+3. Pre-Security Review
+4. Build artefacts（svc / custom node / sub-agent 設計）
+5. Generate workflows
+6. V&V Layer 1（scanner + roundtrip）
+7. V&V Layer 2.A（npm install / tsc / audit）
+8. V&V Layer 2.B（svc smoke + 3 負面測試）
+9. V&V Layer 2.C/D（workflow contract + parity）
+10. Activate to n8n（自動套 `[Claude YYYY-MM-DD]` 前綴）
+11. Completion report
+
+每階段 main 出 artefact → critic 過 gate → FAIL/PENDING 即 VETO → main 修了才能往下。
+
+### 🌐 §1.5 語言鎖定規則（**所有 artefact 必遵**）
+
+使用者用哪種語言啟動 SKILL → 所有 prose artefact（sticky notes / 報告 / Slack 文字範本）用同一語言。識別字 / 命令 / API 名保持英文（國際標準）。
+
+| 啟動語言 | Sticky note 語言 |
+| --- | --- |
+| 中文 | 繁中（除非使用者用簡體） |
+| English | English |
+| 日本語 / 한국어 / Français / Deutsch / Español / Tiếng Việt / ภาษาไทย / Bahasa Melayu / Bahasa Indonesia | 同上 |
+
+Stage 5 + Stage 11 critic gate 必含「sticky-note 語言 ↔ 啟動語言」一致性檢查，不一致 → VETO。
+
+### 💾 跨 session memory
+
+`feedback_artefact_language_matches_user.md` — 把語言鎖定規則寫入 memory，未來所有 Code2n8n 案例（即便不用 pipeline SKILL）也一體適用。MEMORY.md 索引同步更新。
+
+### 🩹 周邊串接
+
+- `plugin.json`：登錄 `code2n8n-pipeline` SKILL，skills 14 → **15**
+- README en + zh 樹狀圖、Agentic footprint、一張圖看懂段落同步 14 → 15
+- SKILL 內標示其餘 7 個既有 SKILL 在 pipeline 哪個 stage 被呼叫（`code-to-workflow`、`n8n-security-governance`、`sticky-note-to-workflow`、`tigerai-enterprise-patterns`、`n8n-api-bridge`、`n8n-code-to-native`、`tigerai-example-finder`）— 本 SKILL 是 orchestrator，不重做。
+
+### 為什麼這版重要
+
+v0.27.0 → v0.29.0 把 V&V gate、SECURITY-REVIEW、A2A directive、11 語本土化全堆好了 — 但這些都是「**使用者** / **AI** 要記得啟動」的選用機制。v0.30.0 把它**結構化進 SKILL 的啟動條件本身**：未來丟一個 GitHub MIT repo 進來，本 SKILL 會自動 trigger，整條 pipeline 含 critic 自動跑完，使用者不需要記得 invoke「兩層 V&V」「A2A directive」「對抗式 review」三個東西 — pipeline **自帶**這三個。
+
+---
+
 ## v0.29.0 — A2A 指令全 9 語系本土化（11 種語言總計）
 
 v0.28.1 出 A2A 指令但只有英文。給 AI 用的文件必須在目標 LLM 的主要語言才能可靠觸發那個語言下的 prompt pattern：「validated」/「驗證通過」/「検証済み」/「validé」是不同 token，禁用詞表必須有對應語言的字才能擋住。
