@@ -1,19 +1,37 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { logger } from "hono/logger";
 import { bearerAuth } from "hono/bearer-auth";
+import { cors } from "hono/cors";
+import { bodyLimit } from "hono/body-limit";
 import { serve } from "@hono/node-server";
 import { Capability, supports, InvoiceError } from "@paid-tw/einvoice";
-import { getProvider, SUPPORTED_PROVIDERS } from "./providers.js";
+import { getProvider, SUPPORTED_PROVIDERS, ALLOWED_OPS, type AllowedOp } from "./providers.js";
 
 const app = new Hono();
 app.use("*", logger());
 
-// Bearer auth — every n8n call must carry EINVOICE_SVC_TOKEN.
+// 🔒 SEC-5: deny CORS by default. Set CORS_ORIGINS=https://your-n8n.example.com to allow.
+const corsOrigins = (process.env.CORS_ORIGINS ?? "").split(",").map(s => s.trim()).filter(Boolean);
+app.use("*", cors({
+  origin: corsOrigins.length === 0 ? "" : corsOrigins,
+  allowMethods: ["GET", "POST", "OPTIONS"],
+  allowHeaders: ["authorization", "content-type"],
+}));
+
+// 🔒 SEC-4: 1 MiB body limit. Invoice JSON is small; anything bigger is suspicious.
+app.use("/v1/*", bodyLimit({ maxSize: 1024 * 1024, onError: (c) => c.json({ error: { code: "BODY_TOO_LARGE" } }, 413) }));
+
+// 🔒 SEC-1: refuse to start without a token unless EINVOICE_ALLOW_UNAUTH=1 (dev escape hatch only).
 const svcToken = process.env.EINVOICE_SVC_TOKEN;
-if (svcToken) {
-  app.use("/v1/*", bearerAuth({ token: svcToken }));
+if (!svcToken) {
+  if (process.env.EINVOICE_ALLOW_UNAUTH === "1") {
+    console.warn("⚠ EINVOICE_SVC_TOKEN not set AND EINVOICE_ALLOW_UNAUTH=1 — UNAUTHENTICATED MODE. Dev only.");
+  } else {
+    console.error("❌ EINVOICE_SVC_TOKEN is required. Set it, or pass EINVOICE_ALLOW_UNAUTH=1 to override (dev only). Exiting.");
+    process.exit(1);
+  }
 } else {
-  console.warn("⚠ EINVOICE_SVC_TOKEN not set — service is UNAUTHENTICATED. Do not run in production.");
+  app.use("/v1/*", bearerAuth({ token: svcToken }));
 }
 
 // ---------- Health + meta -------------------------------------------------
@@ -22,14 +40,14 @@ app.get("/healthz", (c) => c.json({ ok: true, providers: SUPPORTED_PROVIDERS }))
 
 app.get("/v1/capabilities/:provider", (c) => {
   const name = c.req.param("provider");
+  if (!SUPPORTED_PROVIDERS.includes(name as typeof SUPPORTED_PROVIDERS[number])) {
+    return c.json({ error: { code: "UNKNOWN_PROVIDER" } }, 400);
+  }
   try {
     const p = getProvider(name);
-    return c.json({
-      provider: p.name,
-      capabilities: [...p.capabilities] as Capability[],
-    });
+    return c.json({ provider: p.name, capabilities: [...p.capabilities] as Capability[] });
   } catch (e) {
-    return c.json({ error: (e as Error).message }, 400);
+    return mapError(c, e);
   }
 });
 
@@ -44,93 +62,56 @@ function unwrap<T>(body: unknown): Wrapped<T> {
   if (!body || typeof body !== "object") throw new Error("body must be an object");
   const b = body as Record<string, unknown>;
   if (typeof b.provider !== "string") throw new Error("body.provider (string) required");
+  if (!SUPPORTED_PROVIDERS.includes(b.provider as typeof SUPPORTED_PROVIDERS[number])) {
+    throw new Error("unknown provider");
+  }
   if (!b.input || typeof b.input !== "object") throw new Error("body.input (object) required");
   return { provider: b.provider, input: b.input as T };
 }
 
-function asInvoiceError(e: unknown): { status: number; body: Record<string, unknown> } {
+function mapError(c: Context, e: unknown) {
   if (e instanceof InvoiceError) {
-    return {
-      status: e.code === "INVALID_INPUT" || e.code === "UNSUPPORTED" ? 400 : 502,
-      body: {
-        error: { code: e.code, message: e.message, provider: e.providerCode ?? null },
+    const clientFault = e.code === "VALIDATION" || e.code === "UNSUPPORTED" || e.code === "NOT_FOUND" || e.code === "CONFLICT" || e.code === "AUTH";
+    const status = clientFault ? 400 : 502;
+    return c.json({
+      error: {
+        code: e.code,
+        message: e.message,
+        provider: e.provider,
+        rawCode: e.rawCode ?? null,
       },
-    };
+    }, status);
   }
-  return { status: 500, body: { error: { code: "INTERNAL", message: (e as Error).message } } };
+  const msg = (e as Error).message ?? "unknown";
+  // 🔒 SEC-3: configuration errors carry only the opaque message.
+  return c.json({ error: { code: "INTERNAL", message: msg } }, msg === "configuration error" ? 500 : 400);
 }
 
-app.post("/v1/issue", async (c) => {
+async function callOp(c: Context, op: AllowedOp) {
   try {
-    const { provider, input } = unwrap<Parameters<ReturnType<typeof getProvider>["issue"]>[0]>(
-      await c.req.json(),
-    );
-    const result = await getProvider(provider).issue(input);
+    const { provider, input } = unwrap(await c.req.json());
+    // Whitelisted dispatch — op is a compile-time AllowedOp.
+    const p = getProvider(provider);
+    const fn = p[op] as (i: unknown) => Promise<unknown>;
+    const result = await fn.call(p, input);
     return c.json({ provider, result });
   } catch (e) {
-    const { status, body } = asInvoiceError(e);
-    return c.json(body, status as 400 | 500 | 502);
+    return mapError(c, e);
   }
-});
+}
 
-app.post("/v1/void", async (c) => {
-  try {
-    const { provider, input } = unwrap<Parameters<ReturnType<typeof getProvider>["void"]>[0]>(
-      await c.req.json(),
-    );
-    const result = await getProvider(provider).void(input);
-    return c.json({ provider, result });
-  } catch (e) {
-    const { status, body } = asInvoiceError(e);
-    return c.json(body, status as 400 | 500 | 502);
-  }
-});
-
-app.post("/v1/allowance", async (c) => {
-  try {
-    const { provider, input } = unwrap<Parameters<ReturnType<typeof getProvider>["allowance"]>[0]>(
-      await c.req.json(),
-    );
-    const result = await getProvider(provider).allowance(input);
-    return c.json({ provider, result });
-  } catch (e) {
-    const { status, body } = asInvoiceError(e);
-    return c.json(body, status as 400 | 500 | 502);
-  }
-});
-
-app.post("/v1/void-allowance", async (c) => {
-  try {
-    const { provider, input } = unwrap<
-      Parameters<ReturnType<typeof getProvider>["voidAllowance"]>[0]
-    >(await c.req.json());
-    const result = await getProvider(provider).voidAllowance(input);
-    return c.json({ provider, result });
-  } catch (e) {
-    const { status, body } = asInvoiceError(e);
-    return c.json(body, status as 400 | 500 | 502);
-  }
-});
-
-app.post("/v1/query", async (c) => {
-  try {
-    const { provider, input } = unwrap<Parameters<ReturnType<typeof getProvider>["query"]>[0]>(
-      await c.req.json(),
-    );
-    const result = await getProvider(provider).query(input);
-    return c.json({ provider, result });
-  } catch (e) {
-    const { status, body } = asInvoiceError(e);
-    return c.json(body, status as 400 | 500 | 502);
-  }
-});
+app.post("/v1/issue",          (c) => callOp(c, "issue"));
+app.post("/v1/void",           (c) => callOp(c, "void"));
+app.post("/v1/allowance",      (c) => callOp(c, "allowance"));
+app.post("/v1/void-allowance", (c) => callOp(c, "voidAllowance"));
+app.post("/v1/query",          (c) => callOp(c, "query"));
 
 // ---------- Capability-aware failover -------------------------------------
 
 interface FailoverBody {
   capability: Capability;
   candidates: string[];
-  op: "issue" | "void" | "allowance" | "voidAllowance" | "query";
+  op: AllowedOp;
   input: unknown;
 }
 
@@ -138,29 +119,37 @@ app.post("/v1/route", async (c) => {
   try {
     const body = (await c.req.json()) as FailoverBody;
     if (!body.capability || !Array.isArray(body.candidates) || !body.op) {
-      return c.json({ error: "capability, candidates[], op are required" }, 400);
+      return c.json({ error: { code: "VALIDATION", message: "capability, candidates[], op are required" } }, 400);
+    }
+    // 🔒 SEC-2: whitelist op against known SDK methods — no dynamic prototype lookup.
+    if (!ALLOWED_OPS.has(body.op)) {
+      return c.json({ error: { code: "VALIDATION", message: `op must be one of: ${[...ALLOWED_OPS].join(", ")}` } }, 400);
     }
     const errors: Record<string, string> = {};
     for (const name of body.candidates) {
+      if (!SUPPORTED_PROVIDERS.includes(name as typeof SUPPORTED_PROVIDERS[number])) {
+        errors[name] = "unknown provider";
+        continue;
+      }
       try {
         const p = getProvider(name);
         if (!supports(p, body.capability)) {
           errors[name] = `lacks capability ${body.capability}`;
           continue;
         }
-        const result = await (p as Record<string, Function>)[body.op](body.input);
+        const fn = p[body.op] as (i: unknown) => Promise<unknown>;
+        const result = await fn.call(p, body.input);
         return c.json({ provider: p.name, capability: body.capability, result });
       } catch (e) {
-        errors[name] = (e as Error).message;
+        errors[name] = (e as Error).message ?? "unknown error";
       }
     }
-    return c.json({ error: "no candidate succeeded", attempts: errors }, 502);
+    return c.json({ error: { code: "ALL_FAILED", message: "no candidate succeeded" }, attempts: errors }, 502);
   } catch (e) {
-    const { status, body } = asInvoiceError(e);
-    return c.json(body, status as 400 | 500 | 502);
+    return mapError(c, e);
   }
 });
 
 const port = Number(process.env.PORT ?? 8787);
 serve({ fetch: app.fetch, port });
-console.log(`einvoice-svc listening on :${port}`);
+console.log(`einvoice-svc listening on :${port} (mode=${process.env.EINVOICE_MODE ?? "TEST"})`);

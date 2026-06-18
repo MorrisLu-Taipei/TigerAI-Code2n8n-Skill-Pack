@@ -170,6 +170,44 @@ Workflows whose risk profile demands monitoring but ship without it must publish
 3. Re-run affected checks after workflow generation.
 4. Include the final security decision and release traceability in validation results.
 
+## §10 — V&V two-layer gate (added v0.28.0 after the einvoice-n8n incident)
+
+> 📜 **Why this exists**: in Pack v0.27.0 the first external-SDK case study (`examples/einvoice-n8n/`) shipped with claims of "validated" backed only by `scripts/security-scan.mjs` (regex pass on workflow JSON) and `scripts/live-roundtrip.mjs` (n8n import/export round-trip). An adversarial review by a second AI immediately found 5 blocking-severity runtime bugs (broken HTTP status check, orphan dead-letter nodes, wrong resume URL variable name, timezone off-by-one for daily/monthly schedulers, missing CSV binary conversion) plus a `package.json` with non-existent dependency versions. Root cause: equating Layer 1 (structural / import-time) with validation. This section enforces both layers from now on.
+
+**Rule**: before any text in a commit, release note, README, or sticky note may say "validated" / "tested" / "verified", the case MUST pass both layers below. Layer 1 alone is necessary but **never sufficient**.
+
+### Layer 1 — Structural / import-time (must pass, does not count as validation)
+
+- `scripts/security-scan.mjs` — 0 errors on workflow JSON.
+- `scripts/live-roundtrip.mjs` — every workflow JSON imports / GET / DELETE round-trips cleanly.
+- Workflow JSON parses; manifest consistency holds.
+
+### Layer 2 — Compile / runtime / cross-document (required for the "validated" claim)
+
+- **Dependency reality**: `npm install` (or equivalent) succeeds without `--force`; `npm audit --omit=dev` reports 0 high+ CVEs.
+- **Compile**: `tsc --noEmit` (or equivalent) exits 0.
+- **Service starts**: `/healthz` returns 200; authn enforced on protected paths (`curl /protected/*` without bearer → 401).
+- **Negative tests**: oversized body → 413; prototype-pollution payload to dynamic dispatch endpoints → 400; unknown enum → 400.
+- **Workflow runtime contract** (each of these is a Pack v0.27.0 failure):
+  - HTTP nodes branching on status MUST set `options.response.response.fullResponse = true`. Otherwise `$json.statusCode` is undefined and `|| 200` defaults true → silent failures with corrupted audit log.
+  - Wait + resume uses `$execution.resumeUrl` (NOT `$resumeUrl` — that is a hallucination).
+  - Every node a sticky note or README promises is actually graph-connected (open the canvas and trace each dead-letter / notification edge).
+  - Webhook responseMode = `responseNode` with a fixed-schema `respondToWebhook` node (NOT `lastNode`, which leaks whatever the final node returned).
+  - Schedule triggers MUST have `settings.timezone` set; Code-node date math MUST use `Intl.DateTimeFormat({ timeZone })` instead of UTC `toISOString().slice(0,10)`.
+  - Email / file attachments preceded by `Convert to File` node when the source is a string.
+- **Cross-document parity**: every README claim points at the file/line that implements it; sticky notes do not promise behavior the JSON omits.
+- **At least one end-to-end smoke** per pattern (real svc + real workflow + real Sheet row).
+
+### Required output
+
+- Tick every box in [`docs/code2n8n-vv-checklist.md`](../../../docs/code2n8n-vv-checklist.md) **explicitly**. No aggregated "all good".
+- Release notes / READMEs must distinguish ✅ what was tested · ❌ what was NOT tested · 🟡 what is known-partial (with target version).
+- Forbidden phrases unless backed by Layer 2 evidence: "Tested", "X/X ok", "Validated", "Production-ready". Use the substitutes in the checklist.
+
+### Worked example
+
+[`examples/einvoice-n8n/SECURITY-REVIEW.md`](../../../examples/einvoice-n8n/SECURITY-REVIEW.md) is the retroactive application of this gate to the v0.27.0 case. **13 structured SEC-### findings (SEC-001 … SEC-013)** — SEC-011 / SEC-012 / SEC-013 are the exact failure modes this gate exists to catch (broken status check, orphan dead-letter, timezone trap). The gate would have blocked v0.27.0.
+
 ## Completion checklist
 
 - [ ] Trust boundaries and sensitive data are documented.
@@ -180,3 +218,4 @@ Workflows whose risk profile demands monitoring but ship without it must publish
 - [ ] Reviewed JSON maps to a Git commit SHA and n8n release tag.
 - [ ] CI validation and rollback evidence exist.
 - [ ] Deployment decision is PASS, CONDITIONAL, or BLOCKED.
+- [ ] **§10 V&V two-layer gate**: Layer 1 + Layer 2 both pass per [`docs/code2n8n-vv-checklist.md`](../../../docs/code2n8n-vv-checklist.md). Every checklist box ticked explicitly, not aggregated.

@@ -7,15 +7,28 @@ import type { InvoiceProvider } from "@paid-tw/einvoice";
 
 const env = process.env;
 
+class ConfigurationError extends Error {
+  constructor(detail: string) {
+    super("configuration error"); // 🔒 SEC-3: hide env var names from clients
+    this.name = "ConfigurationError";
+    (this as { detail?: string }).detail = detail;
+  }
+}
+
 function need(name: string): string {
   const v = env[name];
-  if (!v) throw new Error(`missing required env var: ${name}`);
+  if (!v) {
+    // Detail is for the server-side log only; the thrown message is opaque.
+    console.error(`[providers] missing env var: ${name}`);
+    throw new ConfigurationError(`env var ${name} not set`);
+  }
   return v;
 }
 
-const mode = (env.EINVOICE_MODE === "PRODUCTION" ? "PRODUCTION" : "SANDBOX") as
+// ProviderMode in the SDK is "TEST" | "PRODUCTION".
+const mode = (env.EINVOICE_MODE === "PRODUCTION" ? "PRODUCTION" : "TEST") as
   | "PRODUCTION"
-  | "SANDBOX";
+  | "TEST";
 
 const cache = new Map<string, InvoiceProvider>();
 
@@ -28,7 +41,7 @@ export function getProvider(name: string): InvoiceProvider {
   switch (key) {
     case "amego":
       p = createAmegoProvider({
-        sellerTaxId: need("AMEGO_SELLER_TAX_ID"),
+        sellerUbn: need("AMEGO_SELLER_UBN"),
         appKey: need("AMEGO_APP_KEY"),
         mode,
       });
@@ -37,7 +50,7 @@ export function getProvider(name: string): InvoiceProvider {
       p = createEcpayProvider({
         merchantId: need("ECPAY_MERCHANT_ID"),
         hashKey: need("ECPAY_HASH_KEY"),
-        hashIv: need("ECPAY_HASH_IV"),
+        hashIV: need("ECPAY_HASH_IV"),
         mode,
       });
       break;
@@ -45,27 +58,30 @@ export function getProvider(name: string): InvoiceProvider {
       p = createEzpayProvider({
         merchantId: need("EZPAY_MERCHANT_ID"),
         hashKey: need("EZPAY_HASH_KEY"),
-        hashIv: need("EZPAY_HASH_IV"),
+        hashIV: need("EZPAY_HASH_IV"),
         mode,
       });
       break;
     case "ezpay-crossborder":
+      // EzpayCrossBorderConfig is a type-alias for EzpayConfig.
       p = createEzpayCrossBorderProvider({
         merchantId: need("EZPAY_CB_MERCHANT_ID"),
         hashKey: need("EZPAY_CB_HASH_KEY"),
-        hashIv: need("EZPAY_CB_HASH_IV"),
+        hashIV: need("EZPAY_CB_HASH_IV"),
         mode,
       });
       break;
     case "ezreceipt":
       p = createEzreceiptProvider({
-        account: need("EZRECEIPT_ACCOUNT"),
+        appCode: need("EZRECEIPT_APP_CODE"),
+        appKey: need("EZRECEIPT_APP_KEY"),
+        accName: need("EZRECEIPT_ACC_NAME"),
         password: need("EZRECEIPT_PASSWORD"),
         mode,
       });
       break;
     default:
-      throw new Error(`unknown provider: ${name}`);
+      throw new ConfigurationError(`unknown provider: ${name}`);
   }
   cache.set(key, p);
   return p;
@@ -78,3 +94,13 @@ export const SUPPORTED_PROVIDERS = [
   "ezpay-crossborder",
   "ezreceipt",
 ] as const;
+
+export const ALLOWED_OPS = new Set([
+  "issue",
+  "void",
+  "allowance",
+  "voidAllowance",
+  "query",
+] as const);
+
+export type AllowedOp = "issue" | "void" | "allowance" | "voidAllowance" | "query";

@@ -12,5 +12,7 @@ ENV NODE_ENV=production
 COPY package.json ./
 RUN npm install --omit=dev --omit=optional
 COPY --from=build /app/dist ./dist
+RUN chown -R node:node /app
+USER node
 EXPOSE 8787
 CMD ["node", "dist/index.js"]

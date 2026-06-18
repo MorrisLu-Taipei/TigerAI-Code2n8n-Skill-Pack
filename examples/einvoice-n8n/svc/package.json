@@ -12,12 +12,12 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.13.0",
-    "@paid-tw/einvoice": "^0.1.0",
-    "@paid-tw/einvoice-amego": "^0.1.0",
-    "@paid-tw/einvoice-ecpay": "^0.1.0",
-    "@paid-tw/einvoice-ezpay": "^0.1.0",
-    "@paid-tw/einvoice-ezpay-crossborder": "^0.1.0",
-    "@paid-tw/einvoice-ezreceipt": "^0.1.0",
+    "@paid-tw/einvoice": "^0.3.0",
+    "@paid-tw/einvoice-amego": "^0.3.0",
+    "@paid-tw/einvoice-ecpay": "^0.3.0",
+    "@paid-tw/einvoice-ezpay": "^0.3.0",
+    "@paid-tw/einvoice-ezpay-crossborder": "^0.1.1",
+    "@paid-tw/einvoice-ezreceipt": "^0.1.1",
     "hono": "^4.6.0"
   },
   "devDependencies": {

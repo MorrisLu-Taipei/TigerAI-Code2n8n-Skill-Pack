@@ -3,32 +3,32 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## einvoice-monthly-audit-export (scheduler)\n\n**Trigger**: Schedule 1st of every month, 03:00 (Asia/Taipei).\n\n**What it does**\n1. Read Audit Sheet rows where `appliedAt` falls in the prior calendar month.\n2. Group by op (issue / void / allowance / route:*).\n3. Render a CSV.\n4. Email accountant (PDF receipts they regenerate from provider portal; this CSV is just the operational ledger from n8n's side).\n5. Append a summary row to a `Monthly Summary` tab.\n\n**Why this exists**: 商業會計法 requires retention of invoicing records for at least 10 years. The Audit Sheet is the n8n side; the providers keep their own. This export is the bridge for the accountant.\n\n**Before activating, replace**:\n- `__REPLACE_ME__GOOGLE_SHEET_ID__`\n- `__REPLACE_ME__ACCOUNTANT_EMAIL__`\n- Attach SMTP / Gmail OAuth credential to the email node.",
-        "height": 460,
-        "width": 540
+        "content": "## einvoice-monthly-audit-export (scheduler) — v0.28.0 hardened\n\n**v0.28.0 fixes (from V&V findings)**\n- Asia/Taipei tz set on workflow + tz-correct prev-month computation (was UTC-based → on 1st of month 03:00 Taipei, UTC was previous month → would have walked back two months).\n- Added `Convert to File` node so the Email node's binary `data` property exists (was `json.csv` only → email attach silently failed).\n- Email `attachments` uses the binary property name `data` set by Convert to File.\n\n**Trigger**: 1st of every month, 03:00 Asia/Taipei.\n\n**Flow**\n1. Compute previous calendar month in Asia/Taipei.\n2. Read Audit Sheet rows whose appliedAt is in that month.\n3. Render CSV string.\n4. Convert to binary file (n8n-nodes-base.convertToFile).\n5. Email accountant with CSV attached.\n6. Append summary row to Monthly Summary tab.\n\n**Before activating**: replace `__REPLACE_ME__GOOGLE_SHEET_ID__`, `__REPLACE_ME__ACCOUNTANT_EMAIL__`; attach SMTP/Gmail credential.",
+        "height": 540,
+        "width": 580
       },
       "id": "note-1",
       "name": "Pattern note",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [-720, -340]
+      "position": [-740, -360]
     },
     {
       "parameters": {
         "rule": { "interval": [{ "field": "months", "triggerAtDayOfMonth": 1, "triggerAtHour": 3 }] }
       },
       "id": "sched-1",
-      "name": "Monthly 1st 03:00",
+      "name": "Monthly 1st 03:00 Taipei",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
-      "position": [-100, -40]
+      "position": [-120, -40]
     },
     {
       "parameters": {
-        "functionCode": "const now = new Date();\nconst firstOfThisMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));\nconst firstOfPrevMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));\nconst yyyymm = firstOfPrevMonth.toISOString().slice(0,7);\nreturn [{ json: {\n  correlationId: `monthly-${yyyymm}-${Math.floor(Math.random()*1e6)}`,\n  yyyymm,\n  rangeStart: firstOfPrevMonth.toISOString().slice(0,10),\n  rangeEndExclusive: firstOfThisMonth.toISOString().slice(0,10)\n}}];"
+        "functionCode": "// Compute previous calendar month in Asia/Taipei.\nconst now = new Date();\nconst fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' });\nconst todayParts = fmt.formatToParts(now).reduce((acc,p) => { if (p.type !== 'literal') acc[p.type] = p.value; return acc; }, {});\nconst yr = Number(todayParts.year), mo = Number(todayParts.month);\nconst prevYr = mo === 1 ? yr - 1 : yr;\nconst prevMo = mo === 1 ? 12 : mo - 1;\nconst yyyymm = `${prevYr}-${String(prevMo).padStart(2,'0')}`;\nconst rangeStart = `${yyyymm}-01`;\nconst rangeEndExclusive = `${yr}-${String(mo).padStart(2,'0')}-01`;\nreturn [{ json: { correlationId: `monthly-${yyyymm}-${Math.floor(Math.random()*1e6)}`, yyyymm, rangeStart, rangeEndExclusive } }];"
       },
       "id": "stamp-1",
-      "name": "Stamp range",
+      "name": "Stamp previous month (Taipei)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [120, -40]
@@ -47,13 +47,30 @@
     },
     {
       "parameters": {
-        "functionCode": "const range = $node['Stamp range'].json;\nconst rows = $items().map(i => i.json).filter(r => {\n  const t = (r.appliedAt || '').slice(0,10);\n  return t >= range.rangeStart && t < range.rangeEndExclusive;\n});\nconst headers = ['correlationId','op','provider','orderId','invoiceNumber','status','appliedAt'];\nconst lines = [headers.join(',')];\nfor (const r of rows) {\n  lines.push(headers.map(h => JSON.stringify(r[h] ?? '')).join(','));\n}\nconst counts = rows.reduce((acc,r) => { acc[r.op] = (acc[r.op]||0) + 1; return acc; }, {});\nreturn [{ json: {\n  correlationId: range.correlationId,\n  yyyymm: range.yyyymm,\n  csv: lines.join('\\n'),\n  rowCount: rows.length,\n  counts\n}}];"
+        "functionCode": "const range = $node['Stamp previous month (Taipei)'].json;\nconst rows = $items().map(i => i.json).filter(r => {\n  const t = (r.appliedAt || '').slice(0,10);\n  return t >= range.rangeStart && t < range.rangeEndExclusive;\n});\nconst headers = ['correlationId','op','provider','orderId','invoiceNumber','status','appliedAt'];\nconst escape = (v) => {\n  const s = v == null ? '' : String(v);\n  if (/[,\"\\n]/.test(s)) return '\"' + s.replace(/\"/g, '\"\"') + '\"';\n  return s;\n};\nconst lines = [headers.join(',')];\nfor (const r of rows) lines.push(headers.map(h => escape(r[h])).join(','));\nconst counts = rows.reduce((acc,r) => { acc[r.op] = (acc[r.op]||0) + 1; return acc; }, {});\nreturn [{ json: { correlationId: range.correlationId, yyyymm: range.yyyymm, csv: lines.join('\\n'), rowCount: rows.length, counts } }];"
       },
       "id": "csv-1",
       "name": "Render CSV",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [600, -40]
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "csv",
+        "binaryPropertyName": "data",
+        "options": {
+          "encoding": "utf8",
+          "fileName": "=einvoice-audit-{{ $json.yyyymm }}.csv",
+          "mimeType": "text/csv"
+        }
+      },
+      "id": "tofile-1",
+      "name": "Convert CSV to file",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [840, -40]
     },
     {
       "parameters": {
@@ -74,39 +91,33 @@
       "name": "Append summary",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
-      "position": [840, -40]
+      "position": [1080, -40]
     },
     {
       "parameters": {
         "fromEmail": "noreply@your-company.tw",
         "toEmail": "__REPLACE_ME__ACCOUNTANT_EMAIL__",
         "subject": "=einvoice 月度稽核紀錄 — {{ $json.yyyymm }}",
-        "text": "=附件：{{ $json.yyyymm }} 月共 {{ $json.rowCount }} 筆 einvoice 操作。\\n\\n分類：{{ JSON.stringify($json.counts) }}\\n\\n本郵件由 n8n 自動產生，請以各供應商後台與財政部平台正式紀錄為準。",
-        "options": {
-          "attachmentsUi": {
-            "attachmentsBinary": [
-              {
-                "property": "data"
-              }
-            ]
-          }
-        }
+        "text": "=附件：{{ $json.yyyymm }} 月共 {{ $json.rowCount }} 筆 einvoice 操作。\\n\\n分類：{{ JSON.stringify($json.counts) }}\\n\\n本郵件由 n8n 自動產生，正式紀錄請以各供應商後台與財政部平台為準。",
+        "attachments": "data",
+        "options": {}
       },
       "id": "email-1",
       "name": "Email accountant",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [1080, -40]
+      "position": [1320, -40]
     }
   ],
   "connections": {
-    "Monthly 1st 03:00": { "main": [[{ "node": "Stamp range", "type": "main", "index": 0 }]] },
-    "Stamp range": { "main": [[{ "node": "Read Audit", "type": "main", "index": 0 }]] },
+    "Monthly 1st 03:00 Taipei": { "main": [[{ "node": "Stamp previous month (Taipei)", "type": "main", "index": 0 }]] },
+    "Stamp previous month (Taipei)": { "main": [[{ "node": "Read Audit", "type": "main", "index": 0 }]] },
     "Read Audit": { "main": [[{ "node": "Render CSV", "type": "main", "index": 0 }]] },
-    "Render CSV": { "main": [[{ "node": "Append summary", "type": "main", "index": 0 }]] },
+    "Render CSV": { "main": [[{ "node": "Convert CSV to file", "type": "main", "index": 0 }]] },
+    "Convert CSV to file": { "main": [[{ "node": "Append summary", "type": "main", "index": 0 }]] },
     "Append summary": { "main": [[{ "node": "Email accountant", "type": "main", "index": 0 }]] }
   },
-  "settings": { "executionOrder": "v1" },
+  "settings": { "executionOrder": "v1", "timezone": "Asia/Taipei" },
   "active": false,
   "pinData": {},
   "tags": []

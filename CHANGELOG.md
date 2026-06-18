@@ -1,5 +1,79 @@
 # Changelog
 
+## v0.28.0 — V&V 兩層 gate + einvoice-n8n 13 個 SEC-### + 結構化檢討
+
+**這版的主因是 v0.27.0 的失誤檢討**。第一個外部 SDK 案例 `examples/einvoice-n8n/` 上版時，我宣稱「6/6 ok 驗證通過」— 實際只跑了 workflow JSON scanner + n8n REST import roundtrip。使用者拿另一個 AI 做對抗式 review，立刻找到 5 個阻斷性 runtime bug 和 1 個 svc 完全裝不起來的 package.json 錯誤。
+
+[`examples/einvoice-n8n/REFLECTION.md`](examples/einvoice-n8n/REFLECTION.md) 是完整檢討。重點：**我把 Layer 1（結構 / import）當成 Layer 2（compile / runtime）**。
+
+### 🆕 SOP：`docs/code2n8n-vv-checklist.md` — V&V 兩層 gate
+
+定義 Layer 1 vs Layer 2，列禁用詞彙，給逐項 reviewer checklist。**任何 commit / release / README 要寫「驗證」之前，兩層都要過**。
+
+### 🆕 SKILL §10：`n8n-security-governance` 強制 §10
+
+Skill 新增 §10「V&V 兩層 gate」，把 SOP 鎖進 marquee skill 的完成檢查清單。`code-to-workflow` 套用 marquee 流程時自動套用本 gate。
+
+### 🆕 [`examples/einvoice-n8n/SECURITY-REVIEW.md`](examples/einvoice-n8n/SECURITY-REVIEW.md) — 13 個 SEC-### finding
+
+| ID | Severity | v0.27.0 | v0.28.0 |
+| --- | --- | --- | --- |
+| SEC-001 | Critical | service fail-open when token missing | ✅ 改 exit(1) |
+| SEC-002 | High | `/v1/route` allowed prototype dispatch | ✅ ALLOWED_OPS 白名單 |
+| SEC-003 | Medium | error 訊息洩漏 env 名 | ✅ `"configuration error"` opaque |
+| SEC-004 | Medium | 無 body size limit | ✅ 1 MiB body-limit → 413 |
+| SEC-005 | Medium | 無 CORS policy | ✅ deny-by-default |
+| SEC-006 | Low | logger 升 verbose 會洩 invoice body | 🟡 v0.29 redaction |
+| SEC-007 | Medium | Dockerfile root + 未 pin | ✅ USER node；v0.29 補 pin |
+| SEC-008 | Medium | `.env` 未進 `.gitignore` | ✅ svc/.gitignore 補上 |
+| SEC-009 | Critical | void approval 無驗簽 | 🟡 文件 + `$execution.resumeUrl` 修正；HMAC verifier sub-WF 排 v0.29 |
+| SEC-010 | Medium | webhook responseMode `lastNode` 洩漏 | ✅ `responseNode` 固定 schema |
+| SEC-011 | **Critical** | HTTP `$json.statusCode \|\| 200` 永遠 truthy → audit 撒謊 | ✅ `fullResponse: true` + Rehydrate state node |
+| SEC-012 | High | dead-letter Slack 是孤立節點 | ✅ Exhausted? 並連到 Audit + Slack |
+| SEC-013 | High | 排程使用 UTC slice → 算錯日 | ✅ `settings.timezone='Asia/Taipei'` + `Intl.DateTimeFormat` |
+
+### 🩹 修：svc 從根本可用
+
+- `package.json`：`@paid-tw/einvoice@^0.3.0`、`amego/ecpay/ezpay@^0.3.0`、`ezpay-crossborder/ezreceipt@^0.1.1`、`hono@^4.6.0`、`@hono/node-server@^1.13.0`。**全部對到 npm 真正發佈版本**。
+- `providers.ts`：5 家 adapter config 從讀**真實的** `BaseProviderConfig` + 各家 `XxxConfig` 重寫 — `sellerUbn`（非 `sellerTaxId`）、`hashIV`（非 `hashIv`）、`appCode + appKey + accName + password`（ezReceipt）、`mode: TEST | PRODUCTION`（非 SANDBOX）。
+- `index.ts`：`InvoiceError.rawCode` / `e.provider`（非 `providerCode`）、Hono `Context` 正規型別。
+- `tsc --noEmit` ✅ 0 errors。`npm audit --omit=dev` ✅ 0 vulnerabilities。
+
+### 🩹 修：6 個 workflow 全部重寫
+
+- `einvoice-issue-from-order`：HTTP fullResponse + Rehydrate state + DLQ 連線修好 + responseNode + Asia/Taipei
+- `einvoice-allowance`：同上
+- `einvoice-void-with-approval`：`$resumeUrl` → `$execution.resumeUrl` + Rehydrate after Wait + responseNode
+- `einvoice-daily-reconcile`：Asia/Taipei `Intl.DateTimeFormat` + 補上 README 承諾的 `Email finance` 節點
+- `einvoice-provider-failover`：HTTP fullResponse + rehydrate
+- `einvoice-monthly-audit-export`：Asia/Taipei 月初算法 + `Convert to File` 節點讓 Email attachment 真的存在
+
+### ✅ V&V 紀錄（這次照 §10 走完兩層）
+
+**Layer 1**：
+- Scanner：6 files · 0 error · 3 expected warnings（SEC-009 entry webhooks）
+- Live REST round-trip：6/6 ok · tag `claude-import-2026-06-18` · post-test DELETE
+
+**Layer 2**（之前漏的）：
+- `npm install` ✅ 0 phantom deps, 0 vulnerabilities
+- `tsc --noEmit` ✅ 0 errors
+- `node dist/index.js` ✅ service starts, `/healthz` 200
+- 未認證 `/v1/*` ✅ 401
+- SEC-2 `op=__proto__` ✅ 400
+- SEC-4 2 MB body ✅ 413
+- SEC-3 env 名 ✅ 不外洩
+
+**仍未做（誠實揭露）**：
+- 真正的 svc + n8n + Sheet end-to-end smoke（送一筆 mock issue 走完整條鏈、看到 audit row 真的長對）— 排 v0.29
+- HMAC verifier sub-workflow（SEC-009 compensating control）— 排 v0.29
+- logger 主動 redaction（SEC-006）— 排 v0.29
+
+### 為什麼這版重要
+
+不是「新功能版」。是**第一個案例驗證失格 → 修正 + 把標準寫進 SKILL/SOP**。Pack 的可信度不靠「我們有方法論」，靠「方法論在第一次出包時有被執行到」。
+
+---
+
 ## v0.27.0 — 新案例：台灣電子發票 SDK → n8n 治理鏈（Code2n8n Path B 教科書級）
 
 把 [`MorrisLu-Taipei/einvoice`](https://github.com/MorrisLu-Taipei/einvoice)（台灣電子發票統一 TypeScript SDK，5 家供應商：Amego / ECPay / ezPay / ezPay 跨境 / ezReceipt）做成可被 n8n 編排的治理鏈。**SDK 本身不搬進 n8n** — SDK 已經解了「5 家 → 1 介面」這層 partition，搬進 n8n 是反模式。Pack 給的答案是寫一個 80 行的 HTTP wrapper service 持有 credentials，n8n 只編排業務流程。
