@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.28.1 — V&V gate 的 A2A 版本（給 AI 用，不再只是人用）
+
+使用者指出：「整個 Pack 是給 AI 使用的，V&V SOP 寫成『給人 print 出來 tick』搞錯對象」。確實 — v0.28.0 出 `code2n8n-vv-checklist.md` 是人類版本。AI agent 讀那份會把它當參考資料、不會當強制指令。
+
+### 🆕 [`docs/code2n8n-vv-a2a.md`](docs/code2n8n-vv-a2a.md) — A2A 機械可執行指令
+
+寫給 AI 讀的 V&V gate：
+- **觸發時機**：明確列出 9 個觸發 token（"validated" / "驗證通過" 等），不留模糊空間
+- **精確工具呼叫**：`node scripts/...` 一條條列死，不寫「用 judgment」
+- **強制 evidence schema**：跑完 gate 必須輸出固定格式的 PASS/FAIL/PENDING 列表
+- **禁用短語表**：列出哪些字 + 對應該條什麼 evidence 才能用
+- **跳過行為明文化**：環境不允許做 Layer 2 時必須 SKIPPED + reason，不能裝沒事
+- **對抗式 review hook**：第一個新 SDK 案例必須請另一個獨立 AI 跑 review
+
+### 🩹 周邊串接
+
+- 兩種語言 README 在 hero 一句話定位下方加 callout：「🤖 AI agent 要使用本 Pack？跑任何 Code2n8n 流程之前先讀 vv-a2a.md」
+- `n8n-security-governance` SKILL §10 主指引拆成 AI 走 a2a / 人走 checklist
+- 連到 [`examples/einvoice-n8n/REFLECTION.md`](examples/einvoice-n8n/REFLECTION.md) 解釋為什麼有這個 gate
+
+### 為什麼這版重要
+
+Pack 的目標讀者本來就是 AI agent — Claude Code / Codex / Antigravity 在執行 Code2n8n 流程時讀本 Pack 的 Skills / docs。把 V&V 寫成「給人 tick 的 SOP」等於把整個防護機制朝錯誤方向交付。**A2A 版本才是這套 Pack 真正的 V&V interface**。
+
+---
+
 ## v0.28.0 — V&V 兩層 gate + einvoice-n8n 13 個 SEC-### + 結構化檢討
 
 **這版的主因是 v0.27.0 的失誤檢討**。第一個外部 SDK 案例 `examples/einvoice-n8n/` 上版時，我宣稱「6/6 ok 驗證通過」— 實際只跑了 workflow JSON scanner + n8n REST import roundtrip。使用者拿另一個 AI 做對抗式 review，立刻找到 5 個阻斷性 runtime bug 和 1 個 svc 完全裝不起來的 package.json 錯誤。

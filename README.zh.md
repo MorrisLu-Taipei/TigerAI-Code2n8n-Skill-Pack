@@ -8,6 +8,8 @@
 ![TigerAI Code2n8n Skill Pack — Code2n8n hero（v19，正確 logo + 平台能力註腳，中文版）](docs/images/code2n8n-hero-zh.png)
 
 > 🎯 **一句話定位**：**本 Pack 是移植 / 審查 / 驗證 / 治理的「方法包」；n8n 版本 + 企業 IT 才承載企業平台能力。**
+>
+> 🤖 **AI agent 要使用本 Pack？** 跑任何 Code2n8n 流程**之前**，先讀 [`docs/code2n8n-vv-a2a.md`](docs/code2n8n-vv-a2a.md)。這份是 A2A（AI-to-AI）指令，明確規範：什麼時候才可以說「驗證通過 / 已測試 / 可上線」、要跑哪些工具、要產什麼 evidence schema、哪些詞彙在通過 gate 前是禁用的。跳過這個 gate 就是 v0.27.0 出事的原因，紀錄在 [`examples/einvoice-n8n/REFLECTION.md`](examples/einvoice-n8n/REFLECTION.md)。**人類** reviewer 改讀 [`docs/code2n8n-vv-checklist.md`](docs/code2n8n-vv-checklist.md)。
 
 ### 本 Pack 是 / 不是什麼
 

@@ -8,6 +8,8 @@
 ![TigerAI Code2n8n Skill Pack — Code2n8n hero (v19, correct logos + platform-capability footnote)](docs/images/code2n8n-hero-en.png)
 
 > 🎯 **One-sentence positioning**: **This Pack is a porting / review / validation / governance method. n8n editions + your IT carry the enterprise platform capabilities.**
+>
+> 🤖 **AI agent consuming this Pack?** Read [`docs/code2n8n-vv-a2a.md`](docs/code2n8n-vv-a2a.md) **before** running any Code2n8n flow. It is the A2A (AI-to-AI) directive that gates when you may use the words "validated" / "tested" / "production-ready", what tools you must invoke, what evidence schema you must emit, and what phrases are forbidden until the gate passes. Skipping it produced the v0.27.0 incident captured in [`examples/einvoice-n8n/REFLECTION.md`](examples/einvoice-n8n/REFLECTION.md). Human reviewers use [`docs/code2n8n-vv-checklist.md`](docs/code2n8n-vv-checklist.md) instead.
 
 ### What this Pack is — and what it is not
 

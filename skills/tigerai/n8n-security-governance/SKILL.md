@@ -200,9 +200,10 @@ Workflows whose risk profile demands monitoring but ship without it must publish
 
 ### Required output
 
-- Tick every box in [`docs/code2n8n-vv-checklist.md`](../../../docs/code2n8n-vv-checklist.md) **explicitly**. No aggregated "all good".
+- **AI agents**: follow [`docs/code2n8n-vv-a2a.md`](../../../docs/code2n8n-vv-a2a.md) — the A2A directive with exact tool invocations, mandatory evidence schema, forbidden phrases, and skip behavior.
+- **Human reviewers**: tick every box in [`docs/code2n8n-vv-checklist.md`](../../../docs/code2n8n-vv-checklist.md) **explicitly**. No aggregated "all good".
 - Release notes / READMEs must distinguish ✅ what was tested · ❌ what was NOT tested · 🟡 what is known-partial (with target version).
-- Forbidden phrases unless backed by Layer 2 evidence: "Tested", "X/X ok", "Validated", "Production-ready". Use the substitutes in the checklist.
+- Forbidden phrases unless backed by Layer 2 evidence: "Tested", "X/X ok", "Validated", "Production-ready". Use the substitutes in the A2A directive / checklist.
 
 ### Worked example
 
