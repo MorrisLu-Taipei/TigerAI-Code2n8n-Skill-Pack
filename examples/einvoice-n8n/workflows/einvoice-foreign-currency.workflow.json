@@ -1,0 +1,122 @@
+{
+  "name": "einvoice-foreign-currency — USD/EUR/JPY issue + exchangeRate → svc/v1/issue",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## einvoice-foreign-currency（FOREIGN_CURRENCY capability）— v0.35.0\n\n**為何需要此 workflow**：跨境電商 / SaaS 訂閱可能用 USD / EUR / JPY 計價，但**法定金額仍以 TWD 申報財政部**（MIG 不變式）。`currency` + `exchangeRate` 是「**註記**」原始幣別，不替代 TWD 金額。SDK capability `FOREIGN_CURRENCY` 對應此模式：**Amego / ezPay 跨境支援**，其餘**拒絕**非 TWD `currency`（會回 UNSUPPORTED，非靜默丟棄）。\n\n**關鍵概念**：\n- `amount.salesAmount` / `taxAmount` / `totalAmount` **必須是 TWD 整數**（已換算後的法定值）\n- `currency` = ISO 4217 字串（'USD' / 'EUR' / 'JPY' / 'TWD'）\n- `exchangeRate` = 數字 — 1 單位原始幣別 = ? TWD（例：1 USD = 32.5 TWD → exchangeRate: 32.5）\n- 若 `currency` = 'TWD'，`exchangeRate` 應為 1 或省略\n\n**SDK 行為**：\n- 支援 FOREIGN_CURRENCY 的 provider（Amego / ezPay 跨境）→ 把 `currency` + `exchangeRate` 寫入發票註記欄位\n- 不支援的 provider（ECPay / ezPay / ezReceipt）+ `currency != 'TWD'` → SDK 拋 `UNSUPPORTED` 錯誤，**不會靜默把外幣註記丟掉**\n\n**Trigger**：webhook POST `/webhook/einvoice/foreign-currency-issue`，body：\n```json\n{\n  \"provider\": \"ezpay-crossborder\",\n  \"input\": {\n    \"orderId\": \"intl-2026-001\",\n    \"buyer\": { \"email\": \"alice@usa.example\" },\n    \"items\": [{ \"description\": \"SaaS subscription (USD)\", \"quantity\": 1, \"unitPrice\": 1625, \"amount\": 1625 }],\n    \"amount\": { \"salesAmount\": 1547, \"taxAmount\": 78, \"totalAmount\": 1625 },\n    \"taxType\": \"TAXABLE\",\n    \"priceMode\": \"TAX_INCLUSIVE\",\n    \"currency\": \"USD\",\n    \"exchangeRate\": 32.5\n  }\n}\n```\n\n（範例：USD 50.00 訂閱，匯率 32.5 → TWD 1,625）\n\n**反例**（不支援 FOREIGN_CURRENCY 卻送 USD）：\n```json\n{ \"provider\": \"ecpay\", \"input\": { ..., \"currency\": \"USD\", \"exchangeRate\": 32.5 } }\n```\nSDK 會回 `{ error: { code: 'UNSUPPORTED', ... } }`，本 workflow 將該錯誤包成 `status: 'unsupported-by-provider'` 回 caller，並建議改用 capability-aware-gate 路由到 Amego / ezPay 跨境。\n\n**上線前需替換**：`__REPLACE_ME__EINVOICE_SVC_URL__`、`__REPLACE_ME__GOOGLE_SHEET_ID__`；HTTP 節點掛 httpHeaderAuth credential。",
+        "height": 1020,
+        "width": 600
+      },
+      "id": "note-1",
+      "name": "Pattern note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-760, -500]
+    },
+    {
+      "parameters": {
+        "path": "einvoice/foreign-currency-issue",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-1",
+      "name": "Webhook: foreign-currency issue",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [-120, -40]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const body = $json.body || $json;\nif (!body.provider || !body.input) throw new Error('provider + input required');\nconst input = body.input;\nconst currency = input.currency || 'TWD';\nconst exchangeRate = Number(input.exchangeRate ?? 1);\nif (currency !== 'TWD' && !(exchangeRate > 0)) {\n  throw new Error('exchangeRate must be positive when currency != TWD');\n}\nif (currency === 'TWD' && exchangeRate !== 1) {\n  throw new Error('exchangeRate must be 1 (or omitted) when currency = TWD');\n}\nif (!/^[A-Z]{3}$/.test(currency)) {\n  throw new Error('currency must be ISO 4217 (3 uppercase letters)');\n}\n// MIG invariant: amount.totalAmount is TWD integer regardless of currency\nconst total = Number(input.amount?.totalAmount ?? 0);\nif (!Number.isInteger(total) || total <= 0) {\n  throw new Error('amount.totalAmount must be positive TWD integer (MIG invariant)');\n}\nreturn [{ json: {\n  correlationId: `inv-fx-${Date.now()}-${Math.floor(Math.random()*1e6)}`,\n  startedAt: new Date().toISOString(),\n  provider: body.provider,\n  input,\n  fx: { currency, exchangeRate, twdTotal: total, originalApprox: currency === 'TWD' ? null : (total / exchangeRate).toFixed(2) }\n}}];"
+      },
+      "id": "stamp-1",
+      "name": "Stamp + validate FX",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [120, -40]
+    },
+    {
+      "parameters": {
+        "url": "=__REPLACE_ME__EINVOICE_SVC_URL__/v1/issue",
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { provider: $json.provider, input: $json.input } }}",
+        "options": { "timeout": 15000, "response": { "response": { "fullResponse": true, "neverError": true } } },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "http-1",
+      "name": "Call svc /v1/issue (FX)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [360, -40]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const state = $('Stamp + validate FX').first().json;\nconst statusCode = Number($json.statusCode ?? 0);\nconst respBody = $json.body ?? $json;\nconst ok = statusCode >= 200 && statusCode < 300;\nconst unsupported = statusCode === 400 && respBody?.error?.code === 'UNSUPPORTED';\nreturn [{ json: {\n  ...state,\n  statusCode,\n  ok,\n  unsupported,\n  status: ok ? 'issued' : (unsupported ? 'unsupported-by-provider' : 'failed'),\n  invoiceNumber: ok ? respBody?.result?.invoiceNumber : null,\n  errorCode: respBody?.error?.code ?? null,\n  errorMessage: respBody?.error?.message ?? null,\n  appliedAt: new Date().toISOString()\n} }];"
+      },
+      "id": "merge-1",
+      "name": "Rehydrate state",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, -40]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": "__REPLACE_ME__GOOGLE_SHEET_ID__",
+        "sheetName": "Audit",
+        "columnsUi": {
+          "columnValues": [
+            { "column": "correlationId", "value": "={{ $json.correlationId }}" },
+            { "column": "op", "value": "issue-fx" },
+            { "column": "provider", "value": "={{ $json.provider }}" },
+            { "column": "orderId", "value": "={{ $json.input?.orderId }}" },
+            { "column": "currency", "value": "={{ $json.fx?.currency }}" },
+            { "column": "exchangeRate", "value": "={{ $json.fx?.exchangeRate }}" },
+            { "column": "twdTotal", "value": "={{ $json.fx?.twdTotal }}" },
+            { "column": "invoiceNumber", "value": "={{ $json.invoiceNumber }}" },
+            { "column": "status", "value": "={{ $json.status }}" },
+            { "column": "appliedAt", "value": "={{ $json.appliedAt }}" }
+          ]
+        }
+      },
+      "id": "audit-1",
+      "name": "Audit row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [840, -40],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: !!$json.ok, correlationId: $json.correlationId, orderId: $json.input?.orderId, currency: $json.fx?.currency, exchangeRate: $json.fx?.exchangeRate, twdTotal: $json.fx?.twdTotal, originalApprox: $json.fx?.originalApprox, invoiceNumber: $json.invoiceNumber, status: $json.status, errorCode: $json.errorCode, errorMessage: $json.errorMessage }) }}",
+        "options": {}
+      },
+      "id": "respond-1",
+      "name": "Respond to caller",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1080, -40]
+    }
+  ],
+  "connections": {
+    "Webhook: foreign-currency issue": { "main": [[{ "node": "Stamp + validate FX", "type": "main", "index": 0 }]] },
+    "Stamp + validate FX": { "main": [[{ "node": "Call svc /v1/issue (FX)", "type": "main", "index": 0 }]] },
+    "Call svc /v1/issue (FX)": { "main": [[{ "node": "Rehydrate state", "type": "main", "index": 0 }]] },
+    "Rehydrate state": { "main": [[{ "node": "Audit row", "type": "main", "index": 0 }]] },
+    "Audit row": { "main": [[{ "node": "Respond to caller", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1", "timezone": "Asia/Taipei" },
+  "active": false,
+  "pinData": {},
+  "tags": []
+}

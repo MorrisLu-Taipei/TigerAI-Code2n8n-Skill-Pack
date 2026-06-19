@@ -1,0 +1,120 @@
+{
+  "name": "einvoice-scheduled-issue — schedule future issue → svc/v1/issue with scheduledAt",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## einvoice-scheduled-issue（SCHEDULED_ISSUE capability）— v0.35.0\n\n**為何需要此 workflow**：訂閱模式（每月扣款 / 預付會員 / 預約服務）— 帳單在未來特定時間才正式開立發票。SDK capability `SCHEDULED_ISSUE` 對應此模式，**Amego / ezReceipt 不支援**，**ECPay / ezPay / ezPay 跨境支援**。\n\n**典型使用情境**：\n- 月訂閱用戶 2026-07-01 自動扣款 → 同日 00:00 自動開立發票\n- 預付服務（年費 / 季費）→ 服務開通日才開立\n- 跨境電商：依買方時區「該日」開立而非下單時開立\n\n**重點欄位**：`input.scheduledAt`（ISO 8601 時戳）— 必須未來時間；過去時戳 SDK adapter 會回 VALIDATION error。\n\n**Trigger**：webhook POST `/webhook/einvoice/scheduled-issue`，body：\n```json\n{\n  \"provider\": \"ezpay\",\n  \"input\": {\n    \"orderId\": \"sub-2026-07-jane\",\n    \"buyer\": { \"email\": \"jane@example.com\" },\n    \"items\": [{ \"description\": \"Pro 訂閱 / 月\", \"quantity\": 1, \"unitPrice\": 1000, \"amount\": 1000 }],\n    \"amount\": { \"salesAmount\": 1000, \"taxAmount\": 50, \"totalAmount\": 1050 },\n    \"taxType\": \"TAXABLE\",\n    \"priceMode\": \"TAX_EXCLUSIVE\",\n    \"scheduledAt\": \"2026-07-01T00:00:00+08:00\"\n  }\n}\n```\n\n**搭配 capability-aware-gate**：呼叫前必須確認 provider 支援 SCHEDULED_ISSUE — 否則該掛 `einvoice-capability-aware-gate` 路由到支援的 provider，或回 caller UNSUPPORTED 讓上游選擇立即開立。\n\n**回傳 status**：`scheduled` 表已排程，發票號要等預約時間到才產出（查詢用 query-by-order-id 模式）。\n\n**上線前需替換**：`__REPLACE_ME__EINVOICE_SVC_URL__`、`__REPLACE_ME__GOOGLE_SHEET_ID__`；HTTP 節點掛 httpHeaderAuth credential。",
+        "height": 880,
+        "width": 580
+      },
+      "id": "note-1",
+      "name": "Pattern note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-740, -440]
+    },
+    {
+      "parameters": {
+        "path": "einvoice/scheduled-issue",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-1",
+      "name": "Webhook: scheduled-issue request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [-120, -40]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const body = $json.body || $json;\nif (!body.provider || !body.input) throw new Error('provider + input required');\nif (!body.input.scheduledAt) throw new Error('input.scheduledAt required (ISO 8601 future timestamp)');\nconst scheduled = new Date(body.input.scheduledAt);\nif (Number.isNaN(scheduled.getTime())) throw new Error('input.scheduledAt is not a valid ISO timestamp');\nif (scheduled.getTime() <= Date.now()) throw new Error('input.scheduledAt must be in the future');\nreturn [{ json: {\n  correlationId: `inv-sched-${Date.now()}-${Math.floor(Math.random()*1e6)}`,\n  startedAt: new Date().toISOString(),\n  provider: body.provider,\n  input: body.input,\n  scheduledAt: body.input.scheduledAt\n}}];"
+      },
+      "id": "stamp-1",
+      "name": "Stamp + validate scheduledAt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [120, -40]
+    },
+    {
+      "parameters": {
+        "url": "=__REPLACE_ME__EINVOICE_SVC_URL__/v1/issue",
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { provider: $json.provider, input: $json.input } }}",
+        "options": { "timeout": 15000, "response": { "response": { "fullResponse": true, "neverError": true } } },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "http-1",
+      "name": "Call svc /v1/issue (scheduled)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [360, -40]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const state = $('Stamp + validate scheduledAt').first().json;\nconst statusCode = Number($json.statusCode ?? 0);\nconst respBody = $json.body ?? $json;\nconst ok = statusCode >= 200 && statusCode < 300;\nconst unsupported = statusCode === 400 && respBody?.error?.code === 'UNSUPPORTED';\nreturn [{ json: {\n  ...state,\n  statusCode,\n  ok,\n  unsupported,\n  status: ok ? 'scheduled' : (unsupported ? 'unsupported-by-provider' : 'failed'),\n  scheduledInvoiceRef: respBody?.result?.scheduledRef ?? null,\n  errorCode: respBody?.error?.code ?? null,\n  appliedAt: new Date().toISOString()\n} }];"
+      },
+      "id": "merge-1",
+      "name": "Rehydrate state",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, -40]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": "__REPLACE_ME__GOOGLE_SHEET_ID__",
+        "sheetName": "Audit",
+        "columnsUi": {
+          "columnValues": [
+            { "column": "correlationId", "value": "={{ $json.correlationId }}" },
+            { "column": "op", "value": "scheduled-issue" },
+            { "column": "provider", "value": "={{ $json.provider }}" },
+            { "column": "orderId", "value": "={{ $json.input?.orderId }}" },
+            { "column": "scheduledAt", "value": "={{ $json.scheduledAt }}" },
+            { "column": "status", "value": "={{ $json.status }}" },
+            { "column": "scheduledInvoiceRef", "value": "={{ $json.scheduledInvoiceRef }}" },
+            { "column": "appliedAt", "value": "={{ $json.appliedAt }}" }
+          ]
+        }
+      },
+      "id": "audit-1",
+      "name": "Audit row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [840, -40],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: !!$json.ok, correlationId: $json.correlationId, orderId: $json.input?.orderId, scheduledAt: $json.scheduledAt, status: $json.status, scheduledInvoiceRef: $json.scheduledInvoiceRef, errorCode: $json.errorCode }) }}",
+        "options": {}
+      },
+      "id": "respond-1",
+      "name": "Respond to caller",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1080, -40]
+    }
+  ],
+  "connections": {
+    "Webhook: scheduled-issue request": { "main": [[{ "node": "Stamp + validate scheduledAt", "type": "main", "index": 0 }]] },
+    "Stamp + validate scheduledAt": { "main": [[{ "node": "Call svc /v1/issue (scheduled)", "type": "main", "index": 0 }]] },
+    "Call svc /v1/issue (scheduled)": { "main": [[{ "node": "Rehydrate state", "type": "main", "index": 0 }]] },
+    "Rehydrate state": { "main": [[{ "node": "Audit row", "type": "main", "index": 0 }]] },
+    "Audit row": { "main": [[{ "node": "Respond to caller", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1", "timezone": "Asia/Taipei" },
+  "active": false,
+  "pinData": {},
+  "tags": []
+}

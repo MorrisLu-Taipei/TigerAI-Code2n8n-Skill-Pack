@@ -1,0 +1,122 @@
+{
+  "name": "einvoice-issue-b2b-with-modifiers — B2B + MIXED_TAX + CARRIER_VALIDATION → svc/v1/issue",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## einvoice-issue-b2b-with-modifiers — 三合一 capability 範例 — v0.35.0\n\n本 workflow 把三個常一起出現的 modifier capability 放在同一個範例：\n\n| Capability | 觸發欄位 | provider 支援度 |\n| --- | --- | --- |\n| **B2B** — 統一編號買受人 | `input.buyer.taxId` | Amego / ECPay / ezPay / ezReceipt ✓；ezPay 跨境 ✗ |\n| **MIXED_TAX** — 混合稅率發票 | items 內每筆獨立 `taxType`（TAXABLE / ZERO / TAX_FREE）| Amego / ECPay / ezPay / ezReceipt ✓；ezPay 跨境 ✗ |\n| **CARRIER_VALIDATION** — 手機條碼 / 愛心碼 | `input.buyer.carrier` 或 `input.buyer.loveCode` | Amego / ECPay / ezPay / ezReceipt ✓；ezPay 跨境 ✗ |\n\n**B2C vs B2B 差別**：\n- B2C：`buyer.email` 必填，可選 `buyer.carrier`（手機條碼）或 `buyer.loveCode`（捐贈愛心碼）\n- B2B：`buyer.taxId`（統一編號）+ `buyer.name`（公司全名）必填；不能有 carrier / loveCode（B2B 不使用消費端載具）\n\n**為何把這 3 個合成 1 個範例**：真實 B2B 訂單常一筆同時有 (a) 統一編號（B2B）、(b) 部分商品零稅率（MIXED_TAX），同時公司行政在 B2C 訂單也常用愛心碼捐贈（CARRIER_VALIDATION）。本 workflow 提供「Stamp + validate modifiers」單一 Code 節點驗 3 種組合互斥規則。\n\n**Trigger**：webhook POST `/webhook/einvoice/issue-b2b`，body：\n```json\n{\n  \"provider\": \"amego\",\n  \"input\": {\n    \"orderId\": \"b2b-2026-q2-001\",\n    \"buyer\": { \"taxId\": \"12345678\", \"name\": \"範例科技股份有限公司\" },\n    \"items\": [\n      { \"description\": \"顧問服務（5%）\", \"quantity\": 1, \"unitPrice\": 10000, \"amount\": 10000, \"taxType\": \"TAXABLE\" },\n      { \"description\": \"國外授權費（零稅率）\", \"quantity\": 1, \"unitPrice\": 5000, \"amount\": 5000, \"taxType\": \"ZERO\" }\n    ],\n    \"amount\": { \"salesAmount\": 15000, \"taxAmount\": 500, \"totalAmount\": 15500 },\n    \"taxType\": \"MIXED\",\n    \"priceMode\": \"TAX_EXCLUSIVE\"\n  }\n}\n```\n\n**B2C + 愛心碼範例**（不適用 B2B、不適用 MIXED_TAX）：\n```json\n{ \"provider\": \"amego\", \"input\": { ..., \"buyer\": { \"email\": \"jane@x.tw\", \"loveCode\": \"5168\" }, \"taxType\": \"TAXABLE\" } }\n```\n\n**B2C + 手機條碼範例**：\n```json\n{ \"provider\": \"amego\", \"input\": { ..., \"buyer\": { \"email\": \"jane@x.tw\", \"carrier\": \"/AB12345\" }, \"taxType\": \"TAXABLE\" } }\n```\n\n**上線前需替換**：`__REPLACE_ME__EINVOICE_SVC_URL__`、`__REPLACE_ME__GOOGLE_SHEET_ID__`；HTTP 節點掛 httpHeaderAuth credential。",
+        "height": 1200,
+        "width": 600
+      },
+      "id": "note-1",
+      "name": "Pattern note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-760, -560]
+    },
+    {
+      "parameters": {
+        "path": "einvoice/issue-b2b",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-1",
+      "name": "Webhook: B2B issue request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [-120, -40]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const body = $json.body || $json;\nif (!body.provider || !body.input) throw new Error('provider + input required');\nconst input = body.input;\nconst buyer = input.buyer || {};\n// Modifier classification\nconst hasTaxId = !!buyer.taxId;\nconst hasCarrier = !!buyer.carrier;\nconst hasLoveCode = !!buyer.loveCode;\nconst hasMixedTax = Array.isArray(input.items) && new Set(input.items.map(i => i.taxType).filter(Boolean)).size > 1;\n// B2B vs B2C exclusivity rules\nif (hasTaxId && (hasCarrier || hasLoveCode)) throw new Error('B2B (taxId) cannot coexist with carrier/loveCode (B2C-only modifiers)');\nif (hasCarrier && hasLoveCode) throw new Error('carrier and loveCode are mutually exclusive');\nif (hasTaxId && !buyer.name) throw new Error('B2B issue requires buyer.name (company full name)');\nreturn [{ json: {\n  correlationId: `inv-issue-b2b-${Date.now()}-${Math.floor(Math.random()*1e6)}`,\n  startedAt: new Date().toISOString(),\n  provider: body.provider,\n  input,\n  classification: {\n    flavor: hasTaxId ? 'B2B' : 'B2C',\n    modifiers: {\n      b2b: hasTaxId,\n      mixedTax: hasMixedTax,\n      carrier: hasCarrier,\n      loveCode: hasLoveCode\n    }\n  }\n}}];"
+      },
+      "id": "stamp-1",
+      "name": "Stamp + classify modifiers",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [120, -40]
+    },
+    {
+      "parameters": {
+        "url": "=__REPLACE_ME__EINVOICE_SVC_URL__/v1/issue",
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { provider: $json.provider, input: $json.input } }}",
+        "options": { "timeout": 15000, "response": { "response": { "fullResponse": true, "neverError": true } } },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "http-1",
+      "name": "Call svc /v1/issue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [360, -40]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const state = $('Stamp + classify modifiers').first().json;\nconst statusCode = Number($json.statusCode ?? 0);\nconst respBody = $json.body ?? $json;\nconst ok = statusCode >= 200 && statusCode < 300;\nconst unsupported = statusCode === 400 && respBody?.error?.code === 'UNSUPPORTED';\nreturn [{ json: {\n  ...state,\n  statusCode,\n  ok,\n  unsupported,\n  status: ok ? 'issued' : (unsupported ? 'unsupported-by-provider' : 'failed'),\n  invoiceNumber: ok ? respBody?.result?.invoiceNumber : null,\n  errorCode: respBody?.error?.code ?? null,\n  errorMessage: respBody?.error?.message ?? null,\n  appliedAt: new Date().toISOString()\n} }];"
+      },
+      "id": "merge-1",
+      "name": "Rehydrate state",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, -40]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": "__REPLACE_ME__GOOGLE_SHEET_ID__",
+        "sheetName": "Audit",
+        "columnsUi": {
+          "columnValues": [
+            { "column": "correlationId", "value": "={{ $json.correlationId }}" },
+            { "column": "op", "value": "issue-b2b" },
+            { "column": "flavor", "value": "={{ $json.classification?.flavor }}" },
+            { "column": "modifiers", "value": "={{ JSON.stringify($json.classification?.modifiers) }}" },
+            { "column": "provider", "value": "={{ $json.provider }}" },
+            { "column": "orderId", "value": "={{ $json.input?.orderId }}" },
+            { "column": "buyerTaxId", "value": "={{ $json.input?.buyer?.taxId }}" },
+            { "column": "invoiceNumber", "value": "={{ $json.invoiceNumber }}" },
+            { "column": "status", "value": "={{ $json.status }}" },
+            { "column": "appliedAt", "value": "={{ $json.appliedAt }}" }
+          ]
+        }
+      },
+      "id": "audit-1",
+      "name": "Audit row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [840, -40],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: !!$json.ok, correlationId: $json.correlationId, orderId: $json.input?.orderId, flavor: $json.classification?.flavor, modifiers: $json.classification?.modifiers, invoiceNumber: $json.invoiceNumber, status: $json.status, errorCode: $json.errorCode, errorMessage: $json.errorMessage }) }}",
+        "options": {}
+      },
+      "id": "respond-1",
+      "name": "Respond to caller",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1080, -40]
+    }
+  ],
+  "connections": {
+    "Webhook: B2B issue request": { "main": [[{ "node": "Stamp + classify modifiers", "type": "main", "index": 0 }]] },
+    "Stamp + classify modifiers": { "main": [[{ "node": "Call svc /v1/issue", "type": "main", "index": 0 }]] },
+    "Call svc /v1/issue": { "main": [[{ "node": "Rehydrate state", "type": "main", "index": 0 }]] },
+    "Rehydrate state": { "main": [[{ "node": "Audit row", "type": "main", "index": 0 }]] },
+    "Audit row": { "main": [[{ "node": "Respond to caller", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1", "timezone": "Asia/Taipei" },
+  "active": false,
+  "pinData": {},
+  "tags": []
+}

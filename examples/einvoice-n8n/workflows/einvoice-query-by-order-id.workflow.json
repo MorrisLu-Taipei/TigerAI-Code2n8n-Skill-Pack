@@ -1,0 +1,94 @@
+{
+  "name": "einvoice-query-by-order-id — idempotency lookup → svc/v1/query (by orderId)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## einvoice-query-by-order-id（QUERY_BY_ORDER_ID capability）— v0.35.0\n\n**為何需要此 workflow**：idempotency / 重試保護 — 訂單系統重發 webhook 時，要先確認該 `orderId` 對應的發票是否已開立，避免重複開單。SDK capability `QUERY_BY_ORDER_ID` 對應此模式，**ezReceipt 不支援**（其餘 4 家可）。\n\n**慣用模式（idempotency-before-issue）**：\n1. 訂單系統的 webhook 觸發前，先打本 workflow 查 `orderId`。\n2. 若返回 `invoiceNumber` → 已開過，直接回 caller 該發票號（idempotent reply）。\n3. 若返回 NOT_FOUND → 才呼叫 `einvoice-issue-from-order` 真正開立。\n\n**搭配 capability-aware-gate**：若 provider 是 ezReceipt（不支援 QUERY_BY_ORDER_ID），caller 必須改用 `invoiceNumber` 查；本 workflow 可掛 `einvoice-capability-aware-gate` 前置擋掉 UNSUPPORTED。\n\n**Trigger**：webhook POST `/webhook/einvoice/query-by-order-id`，body：\n```json\n{ \"provider\": \"amego\", \"input\": { \"orderId\": \"order-1001\" } }\n```\n\n**Response shape**：\n```json\n{ \"ok\": true, \"correlationId\": \"...\", \"orderId\": \"order-1001\", \"found\": true, \"invoiceNumber\": \"AB12345678\", \"status\": \"issued\" }\n```\n或 `found:false` 表示無此訂單對應之發票。\n\n**上線前需替換**：`__REPLACE_ME__EINVOICE_SVC_URL__`；HTTP 節點掛 httpHeaderAuth credential。",
+        "height": 660,
+        "width": 580
+      },
+      "id": "note-1",
+      "name": "Pattern note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-740, -400]
+    },
+    {
+      "parameters": {
+        "path": "einvoice/query-by-order-id",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-1",
+      "name": "Webhook: query by orderId",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [-120, -40]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const body = $json.body || $json;\nif (!body.provider || !body.input) throw new Error('provider + input required');\nif (!body.input.orderId) throw new Error('input.orderId required');\nreturn [{ json: {\n  correlationId: `inv-query-${Date.now()}-${Math.floor(Math.random()*1e6)}`,\n  startedAt: new Date().toISOString(),\n  provider: body.provider,\n  input: body.input\n}}];"
+      },
+      "id": "stamp-1",
+      "name": "Stamp correlation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [120, -40]
+    },
+    {
+      "parameters": {
+        "url": "=__REPLACE_ME__EINVOICE_SVC_URL__/v1/query",
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { provider: $json.provider, input: $json.input } }}",
+        "options": { "timeout": 15000, "response": { "response": { "fullResponse": true, "neverError": true } } },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "http-1",
+      "name": "Call svc /v1/query",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [360, -40]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const state = $('Stamp correlation').first().json;\nconst statusCode = Number($json.statusCode ?? 0);\nconst respBody = $json.body ?? $json;\n// svc returns 400 + error.code:NOT_FOUND when no invoice for orderId; treat as 'found:false' not error.\nconst notFound = statusCode === 400 && respBody?.error?.code === 'NOT_FOUND';\nconst found = statusCode >= 200 && statusCode < 300;\nconst unsupported = statusCode === 400 && respBody?.error?.code === 'UNSUPPORTED';\nreturn [{ json: {\n  ...state,\n  statusCode,\n  found,\n  notFound,\n  unsupported,\n  invoiceNumber: found ? respBody?.result?.invoiceNumber : null,\n  status: found ? respBody?.result?.status : null,\n  errorCode: respBody?.error?.code ?? null,\n  appliedAt: new Date().toISOString()\n} }];"
+      },
+      "id": "merge-1",
+      "name": "Rehydrate state",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, -40]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: !$json.unsupported, correlationId: $json.correlationId, orderId: $json.input?.orderId, found: $json.found, invoiceNumber: $json.invoiceNumber, status: $json.status, errorCode: $json.errorCode }) }}",
+        "options": {}
+      },
+      "id": "respond-1",
+      "name": "Respond to caller",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [840, -40]
+    }
+  ],
+  "connections": {
+    "Webhook: query by orderId": { "main": [[{ "node": "Stamp correlation", "type": "main", "index": 0 }]] },
+    "Stamp correlation": { "main": [[{ "node": "Call svc /v1/query", "type": "main", "index": 0 }]] },
+    "Call svc /v1/query": { "main": [[{ "node": "Rehydrate state", "type": "main", "index": 0 }]] },
+    "Rehydrate state": { "main": [[{ "node": "Respond to caller", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1", "timezone": "Asia/Taipei" },
+  "active": false,
+  "pinData": {},
+  "tags": []
+}

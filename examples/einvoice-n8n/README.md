@@ -26,13 +26,21 @@ examples/einvoice-n8n/
 │   ├── package.json / tsconfig.json
 │   ├── .env.example                 ← 5 家 credential 範本 + EINVOICE_SVC_TOKEN
 │   ├── Dockerfile / docker-compose.yml
-└── workflows/                       ← 6 個 importable n8n workflow JSON
-    ├── einvoice-issue-from-order.workflow.json
-    ├── einvoice-void-with-approval.workflow.json
-    ├── einvoice-allowance.workflow.json
-    ├── einvoice-daily-reconcile.workflow.json
-    ├── einvoice-provider-failover.workflow.json
-    └── einvoice-monthly-audit-export.workflow.json
+└── workflows/                       ← 12 個 importable n8n workflow JSON（v0.35.0 起 11/11 capability 完整覆蓋）
+    ├── einvoice-issue-from-order.workflow.json                ← ISSUE
+    ├── einvoice-void-with-approval.workflow.json              ← VOID (v1 DIY)
+    ├── einvoice-void-with-approval-v2-native.workflow.json    ← VOID (v2 Slack sendAndWait)
+    ├── einvoice-void-with-approval-v3-form-native.workflow.json ← VOID (v3 Form HITL, 台灣首選)
+    ├── einvoice-allowance.workflow.json                       ← ALLOWANCE
+    ├── einvoice-void-allowance.workflow.json                  ← VOID_ALLOWANCE  ★ v0.35.0
+    ├── einvoice-daily-reconcile.workflow.json                 ← QUERY (排程對帳)
+    ├── einvoice-query-by-order-id.workflow.json               ← QUERY_BY_ORDER_ID  ★ v0.35.0
+    ├── einvoice-scheduled-issue.workflow.json                 ← SCHEDULED_ISSUE  ★ v0.35.0
+    ├── einvoice-issue-b2b-with-modifiers.workflow.json        ← B2B + MIXED_TAX + CARRIER_VALIDATION  ★ v0.35.0
+    ├── einvoice-foreign-currency.workflow.json                ← FOREIGN_CURRENCY  ★ v0.35.0
+    ├── einvoice-provider-failover.workflow.json               ← multi-capability routing
+    ├── einvoice-capability-aware-gate.workflow.json           ← 前置 capability 檢查 + dispatch  ★ v0.35.0
+    └── einvoice-monthly-audit-export.workflow.json            ← 月度匯出
 ```
 
 ## 7 個 svc endpoints

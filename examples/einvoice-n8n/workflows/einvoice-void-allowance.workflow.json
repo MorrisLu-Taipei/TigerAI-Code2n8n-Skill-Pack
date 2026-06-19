@@ -1,0 +1,119 @@
+{
+  "name": "einvoice-void-allowance — cancel a mis-issued allowance → svc/v1/void-allowance",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## einvoice-void-allowance（折讓作廢 / VOID_ALLOWANCE capability）— v0.35.0\n\n**為何需要此 workflow**：折讓開錯了（金額有誤、應對到不同訂單、誤觸發等）要把該筆折讓作廢退回。SDK capability `VOID_ALLOWANCE` 對應此操作，5 家 provider 全部支援。\n\n**跟 void 的差別**：\n- `void` = 作廢「開立的發票」\n- `voidAllowance` = 作廢「之前開過的折讓」（發票本身不動）\n\n**為何不掛人工核可**：折讓本身可作廢 — 等同「撤回退款」— 但**通常財務政策仍要求人工核可**。本 workflow 提供無核可版本當基礎；若要核可請複製 `einvoice-void-with-approval-v3-form-native` 改 endpoint 與 audit op 即可。\n\n**Trigger**：webhook POST `/webhook/einvoice/void-allowance`，body：\n```json\n{ \"provider\": \"amego\", \"input\": { \"allowanceNumber\": \"AL00000123\", \"reason\": \"金額計算錯誤\" } }\n```\n\n**上線前需替換**：`__REPLACE_ME__EINVOICE_SVC_URL__`、`__REPLACE_ME__GOOGLE_SHEET_ID__`；HTTP 節點掛 httpHeaderAuth credential。",
+        "height": 540,
+        "width": 560
+      },
+      "id": "note-1",
+      "name": "Pattern note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-740, -360]
+    },
+    {
+      "parameters": {
+        "path": "einvoice/void-allowance",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-1",
+      "name": "Webhook: void-allowance request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [-120, -40]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const body = $json.body || $json;\nif (!body.provider || !body.input) throw new Error('provider + input required');\nif (!body.input.allowanceNumber) throw new Error('input.allowanceNumber required');\nreturn [{ json: {\n  correlationId: `inv-voidallow-${Date.now()}-${Math.floor(Math.random()*1e6)}`,\n  startedAt: new Date().toISOString(),\n  provider: body.provider,\n  input: body.input\n}}];"
+      },
+      "id": "stamp-1",
+      "name": "Stamp correlation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [120, -40]
+    },
+    {
+      "parameters": {
+        "url": "=__REPLACE_ME__EINVOICE_SVC_URL__/v1/void-allowance",
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { provider: $json.provider, input: $json.input } }}",
+        "options": { "timeout": 15000, "response": { "response": { "fullResponse": true, "neverError": true } } },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "http-1",
+      "name": "Call svc /v1/void-allowance",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [360, -40]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const state = $('Stamp correlation').first().json;\nconst statusCode = Number($json.statusCode ?? 0);\nconst ok = statusCode >= 200 && statusCode < 300;\nconst respBody = $json.body ?? $json;\nreturn [{ json: { ...state, statusCode, ok, response: respBody, appliedAt: new Date().toISOString() } }];"
+      },
+      "id": "merge-1",
+      "name": "Rehydrate state",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, -40]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": "__REPLACE_ME__GOOGLE_SHEET_ID__",
+        "sheetName": "Audit",
+        "columnsUi": {
+          "columnValues": [
+            { "column": "correlationId", "value": "={{ $json.correlationId }}" },
+            { "column": "op", "value": "voidAllowance" },
+            { "column": "provider", "value": "={{ $json.provider }}" },
+            { "column": "allowanceNumber", "value": "={{ $json.input?.allowanceNumber }}" },
+            { "column": "reason", "value": "={{ $json.input?.reason }}" },
+            { "column": "status", "value": "={{ $json.ok ? 'allowance-voided' : 'failed' }}" },
+            { "column": "appliedAt", "value": "={{ $json.appliedAt }}" }
+          ]
+        }
+      },
+      "id": "audit-1",
+      "name": "Audit row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [840, -40],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: !!$json.ok, correlationId: $json.correlationId, allowanceNumber: $json.input?.allowanceNumber, status: $json.ok ? 'allowance-voided' : 'failed', error: $json.ok ? null : $json.response?.error }) }}",
+        "options": {}
+      },
+      "id": "respond-1",
+      "name": "Respond to caller",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1080, -40]
+    }
+  ],
+  "connections": {
+    "Webhook: void-allowance request": { "main": [[{ "node": "Stamp correlation", "type": "main", "index": 0 }]] },
+    "Stamp correlation": { "main": [[{ "node": "Call svc /v1/void-allowance", "type": "main", "index": 0 }]] },
+    "Call svc /v1/void-allowance": { "main": [[{ "node": "Rehydrate state", "type": "main", "index": 0 }]] },
+    "Rehydrate state": { "main": [[{ "node": "Audit row", "type": "main", "index": 0 }]] },
+    "Audit row": { "main": [[{ "node": "Respond to caller", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1", "timezone": "Asia/Taipei" },
+  "active": false,
+  "pinData": {},
+  "tags": []
+}

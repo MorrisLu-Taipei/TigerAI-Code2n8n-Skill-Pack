@@ -1,0 +1,154 @@
+{
+  "name": "einvoice-capability-aware-gate — pre-flight capability check → svc op or UNSUPPORTED",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## einvoice-capability-aware-gate（前置 capability 檢查 + dispatch）— v0.35.0\n\n**為何需要此 workflow**：呼叫 SDK op 前先驗 provider 是否支援該 capability — fail fast、避免發網路請求才知道不支援、把錯誤回到 caller 讓上游能換 provider。\n\n**典型用法**（兩種）：\n1. **直接 webhook**：caller 想保險 → 先打本 workflow，本 workflow 內部 GET `/v1/capabilities/:provider` → 若支援就轉打 svc 對應 endpoint，不支援就回 UNSUPPORTED\n2. **子 workflow**：其他 workflow 用 n8n `executeWorkflow` 節點呼叫本 workflow 當前置擋；本 workflow 同 schema 處理\n\n**Trigger**：webhook POST `/webhook/einvoice/gate`，body：\n```json\n{\n  \"capability\": \"SCHEDULED_ISSUE\",\n  \"provider\": \"ezpay\",\n  \"op\": \"issue\",\n  \"input\": { /* 對應 op 的 SDK input */ }\n}\n```\n\n**Response**：\n- 支援 → 透傳 svc op 結果 + `{ gateOk: true, capability, supportedBy: provider }`\n- 不支援 → `{ gateOk: false, errorCode: 'UNSUPPORTED_CAPABILITY', capability, provider, supportedCapabilities: [...], suggestion: 'try different provider' }`\n- 未知 provider → `{ gateOk: false, errorCode: 'UNKNOWN_PROVIDER', provider }`\n\n**允許的 op**（白名單，跟 svc 一致）：`issue` / `void` / `allowance` / `voidAllowance` / `query`\n\n**搭配建議**：\n- 高頻 op 不建議每次都過 gate（多一次 HTTP roundtrip），快取 capabilities 可在上游做\n- 低頻 / 高風險 op（SCHEDULED_ISSUE / FOREIGN_CURRENCY / VOID_ALLOWANCE）建議過 gate — 因為錯了難回\n\n**上線前需替換**：`__REPLACE_ME__EINVOICE_SVC_URL__`；HTTP 節點掛 httpHeaderAuth credential。",
+        "height": 820,
+        "width": 580
+      },
+      "id": "note-1",
+      "name": "Pattern note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-760, -460]
+    },
+    {
+      "parameters": {
+        "path": "einvoice/gate",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-1",
+      "name": "Webhook: gate request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [-120, -40]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const body = $json.body || $json;\nconst ALLOWED_OPS = new Set(['issue', 'void', 'allowance', 'voidAllowance', 'query']);\nfor (const k of ['capability', 'provider', 'op', 'input']) if (body[k] === undefined) throw new Error(k + ' required');\nif (!ALLOWED_OPS.has(body.op)) throw new Error('op must be one of: ' + [...ALLOWED_OPS].join(', '));\n// Map op → endpoint path (matches svc /v1/* routes)\nconst opEndpoint = {\n  issue: '/v1/issue',\n  void: '/v1/void',\n  allowance: '/v1/allowance',\n  voidAllowance: '/v1/void-allowance',\n  query: '/v1/query'\n};\nreturn [{ json: {\n  correlationId: `inv-gate-${Date.now()}-${Math.floor(Math.random()*1e6)}`,\n  startedAt: new Date().toISOString(),\n  capability: body.capability,\n  provider: body.provider,\n  op: body.op,\n  opEndpoint: opEndpoint[body.op],\n  input: body.input\n}}];"
+      },
+      "id": "stamp-1",
+      "name": "Stamp + validate gate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [120, -40]
+    },
+    {
+      "parameters": {
+        "url": "=__REPLACE_ME__EINVOICE_SVC_URL__/v1/capabilities/{{ $json.provider }}",
+        "method": "GET",
+        "options": { "timeout": 8000, "response": { "response": { "fullResponse": true, "neverError": true } } },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "cap-1",
+      "name": "Get capabilities",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [360, -40]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const state = $('Stamp + validate gate').first().json;\nconst statusCode = Number($json.statusCode ?? 0);\nconst respBody = $json.body ?? $json;\nif (statusCode === 400 && respBody?.error?.code === 'UNKNOWN_PROVIDER') {\n  return [{ json: { ...state, gateOk: false, errorCode: 'UNKNOWN_PROVIDER', supportedCapabilities: null } }];\n}\nif (statusCode < 200 || statusCode >= 300) {\n  return [{ json: { ...state, gateOk: false, errorCode: 'CAPABILITY_LOOKUP_FAILED', upstreamStatus: statusCode } }];\n}\nconst caps = Array.isArray(respBody?.capabilities) ? respBody.capabilities : [];\nconst supported = caps.includes(state.capability);\nreturn [{ json: { ...state, gateOk: supported, errorCode: supported ? null : 'UNSUPPORTED_CAPABILITY', supportedCapabilities: caps } }];"
+      },
+      "id": "decide-1",
+      "name": "Decide: supported?",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, -40]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            { "value1": "={{ $json.gateOk }}", "value2": true }
+          ]
+        }
+      },
+      "id": "if-1",
+      "name": "Gate ok?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [840, -40]
+    },
+    {
+      "parameters": {
+        "url": "=__REPLACE_ME__EINVOICE_SVC_URL__{{ $json.opEndpoint }}",
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { provider: $json.provider, input: $json.input } }}",
+        "options": { "timeout": 15000, "response": { "response": { "fullResponse": true, "neverError": true } } },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "dispatch-1",
+      "name": "Dispatch to svc op",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1080, -160]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const state = $('Decide: supported?').first().json;\nconst statusCode = Number($json.statusCode ?? 0);\nconst respBody = $json.body ?? $json;\nconst ok = statusCode >= 200 && statusCode < 300;\nreturn [{ json: {\n  ...state,\n  ok,\n  statusCode,\n  result: ok ? respBody?.result : null,\n  error: ok ? null : respBody?.error,\n  appliedAt: new Date().toISOString()\n}}];"
+      },
+      "id": "merge-1",
+      "name": "Rehydrate after dispatch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, -160]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: !!$json.ok, gateOk: true, correlationId: $json.correlationId, capability: $json.capability, provider: $json.provider, op: $json.op, result: $json.result, error: $json.error }) }}",
+        "options": {}
+      },
+      "id": "respond-ok-1",
+      "name": "Respond (dispatched)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1560, -160]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: false, gateOk: false, correlationId: $json.correlationId, capability: $json.capability, provider: $json.provider, op: $json.op, errorCode: $json.errorCode, supportedCapabilities: $json.supportedCapabilities, suggestion: $json.errorCode === 'UNSUPPORTED_CAPABILITY' ? 'pick a different provider that supports this capability' : null }) }}",
+        "options": {}
+      },
+      "id": "respond-no-1",
+      "name": "Respond (gate blocked)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1080, 80]
+    }
+  ],
+  "connections": {
+    "Webhook: gate request": { "main": [[{ "node": "Stamp + validate gate", "type": "main", "index": 0 }]] },
+    "Stamp + validate gate": { "main": [[{ "node": "Get capabilities", "type": "main", "index": 0 }]] },
+    "Get capabilities": { "main": [[{ "node": "Decide: supported?", "type": "main", "index": 0 }]] },
+    "Decide: supported?": { "main": [[{ "node": "Gate ok?", "type": "main", "index": 0 }]] },
+    "Gate ok?": {
+      "main": [
+        [{ "node": "Dispatch to svc op", "type": "main", "index": 0 }],
+        [{ "node": "Respond (gate blocked)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Dispatch to svc op": { "main": [[{ "node": "Rehydrate after dispatch", "type": "main", "index": 0 }]] },
+    "Rehydrate after dispatch": { "main": [[{ "node": "Respond (dispatched)", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1", "timezone": "Asia/Taipei" },
+  "active": false,
+  "pinData": {},
+  "tags": []
+}

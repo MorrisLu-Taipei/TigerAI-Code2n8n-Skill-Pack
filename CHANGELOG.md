@@ -1,5 +1,54 @@
 # Changelog
 
+## v0.35.0 — einvoice 案例 SDK capability 覆蓋從 4/11 升到 11/11（補完所有 capability + capability-aware gate）
+
+回應使用者：「我們沒有全做???」— 對照 [`@paid-tw/einvoice`](https://github.com/paid-tw/einvoice) SDK 宣告的 11 個 capability，本 Pack v0.34.x 前僅覆蓋 5/11（ISSUE / VOID / ALLOWANCE / QUERY + failover routing）。v0.35.0 補完剩 6/11 + 1 個前置 gating sub-workflow。
+
+### 🆕 6 個新 workflow
+
+| Workflow | 對應 capability | 重點 |
+| --- | --- | --- |
+| [`einvoice-void-allowance`](examples/einvoice-n8n/workflows/einvoice-void-allowance.workflow.json) | `VOID_ALLOWANCE` | 折讓開錯撤回；跟 `void` 對稱，5 家全支援 |
+| [`einvoice-query-by-order-id`](examples/einvoice-n8n/workflows/einvoice-query-by-order-id.workflow.json) | `QUERY_BY_ORDER_ID` | idempotency 模式（重發 webhook 前先查 orderId）；ezReceipt 不支援 |
+| [`einvoice-scheduled-issue`](examples/einvoice-n8n/workflows/einvoice-scheduled-issue.workflow.json) | `SCHEDULED_ISSUE` | 訂閱模式預約未來開立；Amego / ezReceipt 不支援 |
+| [`einvoice-issue-b2b-with-modifiers`](examples/einvoice-n8n/workflows/einvoice-issue-b2b-with-modifiers.workflow.json) | `B2B` + `MIXED_TAX` + `CARRIER_VALIDATION`（三合一）| 三個常一起出現的 modifier capability 同一 workflow 示範；含互斥驗證（taxId vs carrier/loveCode） |
+| [`einvoice-foreign-currency`](examples/einvoice-n8n/workflows/einvoice-foreign-currency.workflow.json) | `FOREIGN_CURRENCY` | 跨境 USD/EUR 開立；TWD MIG 不變式 + currency/exchangeRate 註記；ECPay / ezPay / ezReceipt 不支援 |
+| [`einvoice-capability-aware-gate`](examples/einvoice-n8n/workflows/einvoice-capability-aware-gate.workflow.json) | （前置 gating sub-workflow）| 先 GET `/v1/capabilities/:provider` 驗 → 支援就 dispatch 到 svc op，不支援就回 UNSUPPORTED_CAPABILITY + 建議換 provider |
+
+### 🆕 [`docs/capability-coverage-matrix.md`](examples/einvoice-n8n/docs/capability-coverage-matrix.md)
+
+11×5 完整對照表 + capability 兩種類型（獨立 op 5 個 / modifier 欄位 6 個）拆解 + gate vs routing 二選一指南 + v0.27.0 → v0.35.0 覆蓋演進表 + production checklist。
+
+### 🔑 重要：svc 不需要改動
+
+審 svc 後確認：5 個 op 已 pass-through `input` 全部欄位，6 個 modifier capability（B2B / MIXED_TAX / SCHEDULED_ISSUE / CARRIER_VALIDATION / FOREIGN_CURRENCY / QUERY_BY_ORDER_ID）**透過 op body 欄位**觸發，SDK adapter 內部判斷 + 驗證。**新增 capability 是 SDK 升級的事，svc 不用配合改** — 這是 SDK 架構優勢。
+
+### 📝 真實 Amego sandbox vs 本地模擬器 disclaimer
+
+新文件 [`docs/capability-coverage-matrix.md`](examples/einvoice-n8n/docs/capability-coverage-matrix.md) §7 明寫：
+- **Amego happy path** → 用真實 Amego sandbox（ground truth）
+- **其他 4 provider** → 本地 stub 是唯一辦法（沒公開測試環境帳號）
+- **故障注入** → 本地 sandbox 才能
+- **Sheet / Slack / Email** → 本地模擬器（跟 provider 無關）
+
+本地 sandbox 對 Amego 路由有 gap（`invoiceNumber` / `allowanceNumber` 部分 MIG response 未實作）— 嚴肅 Amego 測試應對接真實 sandbox。本資訊也同步寫入本地 sandbox README（該檔不在 git 追蹤）。
+
+### Layer 1 V&V
+
+```
+JSON parse: PASS (6 new files)
+security-scan.mjs: 6 files × (0 error / 1 warning each) — warnings: pre-existing webhook:no-auth, documented in SECURITY-REVIEW §3.1
+live-roundtrip.mjs: 6/6 ok (tag: claude-import-2026-06-19)
+```
+
+### Layer 2 V&V（部分）
+
+`einvoice-capability-aware-gate` runtime smoke：未做（需設定 capabilities credential、sim 環境跑等）。v0.34.1 v3 Form HITL 的雙分支 runtime 已驗證；v0.35.0 新檔暫為 **🟡 Layer 1 PASS / Layer 2 PENDING tracked-as v0.35.x**。
+
+### 覆蓋率
+
+**11/11 SDK capability**（100%，相對 v0.34.x 的 5/11）。详 [capability-coverage-matrix.md §1](examples/einvoice-n8n/docs/capability-coverage-matrix.md#1-capability-對照11-個-capability--5-個-provider--對應-workflow)。
+
 ## v0.34.1 — v3 Form HITL 修好 + runtime 雙分支驗證通過（Codex 救援 + 教訓寫入）
 
 v0.34.0 ship 的 v3 file Layer 1 通過（scanner + roundtrip）但**自己 runtime smoke 連卡 4 輪**沒跑通。曾誤判為「Wait form mode state 跨不過 boundary」，繞了 `customData → staticData → 手動 hidden field → drop Respond + lastNode mode` 全部白工。**使用者轉求 Codex 後一輪解決** — root cause 是用錯 URL 變數。
