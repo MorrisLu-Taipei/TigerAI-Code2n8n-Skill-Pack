@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.0.2 — README v1.0 banner cleanup（mixed-language → English-only，更精煉）
+
+User feedback: 「很亂 只留英文就好」。v1.0.1 ship 的 v1.0 banner 中英混排（標題用 Chinese「轉換」「資安驗證」「實際測試完成」+ 英文行內容 + 中文括號註解），雜訊大。v1.0.2 改純英文 + 收斂結構。
+
+### Changes
+- README.md v1.0 banner 改純英文：
+  - "Evidence schema — gate v1（Pack 維運 AI ran the gate）" → "V&V evidence — gate v1"
+  - 「轉換 → 資安驗證 → 實際測試完成」 → "port → security review → real-vendor-sandbox runtime PASS"
+  - 「結案驗證單元」 → "Closing report"
+  - 「範圍誠實揭露」 → "Honest scope"
+  - 行內括號中文註解（「11 張可在 Amego 後台查得」等）→ 對應英文
+- Layer 1 evidence 三行合一（JSON parse · scanner · roundtrip），減少縱深
+- 全 banner 章節從 5 個收斂到 4 個（合 Evidence schema + 對應 Layer，去重）
+
+### Self-scan
+- README.md = **0 violations** (12 hits all preceded by evidence markers) ✅
+- Migration backlog unchanged at 28（其他文件 — tracked in [`docs/v1-claims-and-evidence.md`](docs/v1-claims-and-evidence.md) §3）
+
+### Other notes
+- 13 git tags pushed retroactively (v0.32.0 ~ v1.0.1) — GitHub Releases page now shows complete history
+- Repo renamed to `TigerAI-A2A-Code2n8n-Skill-Pack` (auto-redirect from old URL works; local `git remote` can be updated)
+
 ## v1.0.1 — Pack 吃自己狗糧：A2A directive forbidden-phrases self-scan + 防酸民 claims/evidence index + GitHub messaging 全對齊
 
 回應 user：「TigerAI A2A Code2n8n Skill Pack — v1.0 Production-Grade Methodology 這個我喜歡 / AI consumer 用 A2A directive forbidden phrases regex 這是什麼意思。我們可以通過嗎? 要防止酸民攻擊」。
