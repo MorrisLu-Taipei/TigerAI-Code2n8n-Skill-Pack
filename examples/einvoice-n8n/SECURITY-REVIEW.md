@@ -320,6 +320,45 @@ The v0.28.0 review caught 13 SEC-### through code review + Layer 1 scanner + RES
 | Owner | Pack |
 | Target | v0.30.2 |
 
+### SEC-017 — npm 套件 supply chain：scanner 是結構層、`npm audit` 是 advisory 非 gate（v0.35.0 自查）
+
+| Field | Value |
+| --- | --- |
+| Severity | **High** |
+| Status (v0.35.0) | 🔴 **OPEN — 揭露但未補** |
+| Status (v0.36.0 target) | ✅ **FIXED via Tier 1** — scanner 加 Code 節點惡意 jsCode 偵測、`npm audit` 改 fail gate、`^x.y.z` → exact pin、ship socket.dev 設定 doc |
+| Evidence | (a) `.github/workflows/security-gate.yml` 內 `npm audit --omit=dev --audit-level=high \|\| echo "..."` 為 continue-on-error，high CVE 仍 PASS。(b) `svc/package.json` 使用 `^0.3.0` caret，允許 minor 自動升 — 史上多次 npm hijack（event-stream / ua-parser-js / coa）走這條路。(c) `scripts/security-scan.mjs` 只掃 workflow JSON 內結構性疏忽（webhook 無 auth / hardcoded secret），**沒分析 Code 節點 jsCode** — 惡意 workflow 可塞 `require('child_process').exec(...)` 或 dump `process.env`。 |
+| Impact | svc 用 `@paid-tw/einvoice*` 6 個 npm 套件 in-process 跑，會直接拿到 `EINVOICE_SVC_TOKEN` + 5 家 vendor credential — 套件被 hijack 即等於 credential 外洩。workflow JSON 從別處進來 import 即可 RCE。 |
+| Fix shipped | 詳見 [`docs/external-package-security-posture.md`](../../docs/external-package-security-posture.md) §3.1 Tier 1 五項。 |
+| Owner | Pack |
+| Target | v0.36.0 |
+
+### SEC-018 — 外部 workflow JSON ingestion 流程不存在；container blast radius 未限縮（v0.35.0 自查）
+
+| Field | Value |
+| --- | --- |
+| Severity | **High** |
+| Status (v0.35.0) | 🔴 **OPEN — 揭露但未補** |
+| Status (v0.37.0 target) | ✅ **FIXED via Tier 2** — `scripts/ingest-external-workflow.mjs` enhanced scanner + 二級 review 標記、svc Dockerfile non-root + readonly + cap-drop=ALL、base image hash pin |
+| Evidence | (a) 別人寄你一個 `.workflow.json` 想 import — 目前 Pack 沒有「外部 workflow 進來前該過什麼 gate」的 SOP，也沒有 enhanced scanner 抓 Code 節點惡意 jsCode。(b) `examples/einvoice-n8n/svc/Dockerfile` 用 `node:20-alpine` 直接 RUN，沒有 `USER 65534`、沒 readonly fs、沒 `--cap-drop=ALL`、沒 `--read-only` mount。(c) base image `node:20-alpine` 沒 pin hash — 拉到的 image 可能在某次 release 後被供應鏈攻擊。 |
+| Impact | (a) 別人寄來的 workflow JSON 一鍵 import 即 RCE；Pack 沒辦法擋。(b) 即便 svc 被 RCE，container 是 root + writable fs + 全 capability → 容易 escape 到 host。(c) Base image 被入侵時被動受害。 |
+| Fix shipped | 詳見 [`docs/external-package-security-posture.md`](../../docs/external-package-security-posture.md) §3.2 Tier 2 六項。 |
+| Owner | Pack |
+| Target | v0.37.0 |
+
+### SEC-019 — 缺乏「外部依賴安全」治理層 Skill；AI Coder 沒有 SCA 強制 gate（v0.35.0 自查）
+
+| Field | Value |
+| --- | --- |
+| Severity | **Medium** |
+| Status (v0.35.0) | 🔴 **OPEN — 揭露但未補** |
+| Status (v0.38.0 target) | ✅ **FIXED via Tier 3** — 新 Skill `skills/tigerai/external-dependency-security` + `code2n8n-pipeline` SKILL Stage 7 強制過 SCA gate + npm `--audit-signatures` + commit hash 鎖定 + 外部 workflow ingestion review SOP |
+| Evidence | (a) Pack 沒有「外部依賴 review SOP」Skill — AI Coder 寫 svc 時直接 `npm install @paid-tw/einvoice*` 沒過任何審核 gate。(b) curl / WebFetch 抓 GitHub raw 沒鎖 commit hash（讀 `main` 分支） — 我（Claude）2026-06-19 讀 paid-tw/einvoice/main/README.md 是現場讀，無法保證下次讀內容一致。(c) `npm install --audit-signatures` / sigstore provenance 沒整合進 CI。 |
+| Impact | AI Coder 跨案例都重複犯同樣的「直接 npm install」、「直接 curl main」、「沒驗 sigstore」— 沒有 Skill 級規則就會持續發生。 |
+| Fix shipped | 詳見 [`docs/external-package-security-posture.md`](../../docs/external-package-security-posture.md) §3.3 Tier 3 五項。 |
+| Owner | Pack |
+| Target | v0.38.0 |
+
 ### Documentation finding — n8n webhook registration via public REST API
 
 | Field | Value |
