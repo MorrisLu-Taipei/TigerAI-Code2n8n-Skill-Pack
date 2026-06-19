@@ -165,13 +165,14 @@ Each finding lists: **severity** · **status (after v0.28.0 patches)** · **evid
 | --- | --- |
 | Severity | **Critical** |
 | Status (v0.27.0) | UNFIXED + the documentation was wrong (`$resumeUrl` is not a real n8n variable; correct is `$execution.resumeUrl`) |
-| Status (v0.28.0) | 🟡 **MITIGATED (documented, not implemented)** |
-| Evidence | `workflows/einvoice-void-with-approval.workflow.json` — Wait node accepts ANY POST to `$execution.resumeUrl`. |
-| Impact | Anyone with the resume URL (Slack mis-share, log leak, browser history) can approve a void on behalf of someone else. Void is irreversible. |
-| Fix shipped | Workflow now uses the correct `$execution.resumeUrl`. The approver name is taken from the resume callback caller — this is a known n8n limitation; n8n public API does not natively verify Slack signatures inside the Wait resume. |
-| Compensating control required before production | Front the resume URL with a reverse proxy or an inbound Webhook + HMAC-SHA256 Code node that verifies `X-Slack-Signature` (or your preferred IdP signature) **before** the Wait node fires. Documented in the sticky note and README. |
-| Owner | Pack + downstream user |
-| Target | v0.29 — ship a sample HMAC-verifier sub-workflow as a Pack template. |
+| Status (v0.28.0) | 🟡 **MITIGATED (documented, not implemented)** — v1 (DIY) workflow uses bare `$execution.resumeUrl`; compensating control documented but operator must add it before production |
+| Status (v0.33.0) | ✅ **FIXED via v2 native pattern** — see `workflows/einvoice-void-with-approval-v2-native.workflow.json`. Uses n8n 1.50+ Slack `operation: sendAndWait` which delegates approval to Slack's signed button click; approver identity comes from the Slack OAuth user record n8n attaches automatically. No bare resume URL exposed. |
+| Evidence (v0.28.0 v1) | `workflows/einvoice-void-with-approval.workflow.json` — Wait node accepts ANY POST to `$execution.resumeUrl`. |
+| Evidence (v0.33.0 v2) | `workflows/einvoice-void-with-approval-v2-native.workflow.json` — Slack `sendAndWait` node only resumes execution when Slack's signed interaction payload reaches n8n's `/webhook/{id}/callback` endpoint; Slack's signing secret guarantees the click came from the configured Slack workspace. |
+| Impact | (v1) Anyone with the resume URL (Slack mis-share, log leak, browser history) can approve a void on behalf of someone else. Void is irreversible. (v2) Removed. |
+| Compensating control required before production (v1 only) | Front the resume URL with a reverse proxy or an inbound Webhook + HMAC-SHA256 Code node that verifies `X-Slack-Signature` (or your preferred IdP signature) **before** the Wait node fires. **OR** migrate to v2 native pattern (recommended). |
+| Owner | Pack (v2 shipped) + downstream user (chooses v1 vs v2 based on IM platform) |
+| Target | v0.33.0 — v2 shipped. v1 retained for non-Slack IM platforms (LINE Notify, WeCom, in-house Web UI) where `sendAndWait` does not exist and bare resume URL + custom HMAC verifier remains the only option. |
 
 ### SEC-010 — Webhook responseMode `lastNode` leaked internal payloads
 

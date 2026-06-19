@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.33.0 — void-with-approval v2 native HITL（Slack Send-and-Wait）+ SEC-9 從「需前置 HMAC proxy」收緊為「Slack OAuth 即可」
+
+回應使用者：「n8n 不是有 human in the loop 設計，我想知道怎麼配合」。發現我們 v0.27.0 寫的版本是 **DIY 老派寫法**（Slack 普通訊息 + Wait 節點分開 + 文字塞 `$execution.resumeUrl`）— 不是 n8n 1.50+ 之後的官方推薦 HITL 機制。Ship v2 原生版。
+
+### 🆕 [`workflows/einvoice-void-with-approval-v2-native.workflow.json`](examples/einvoice-n8n/workflows/einvoice-void-with-approval-v2-native.workflow.json)
+
+11 個節點（v1 是 12 個 — 把獨立的 Wait 節點吸收進 Slack `sendAndWait`）。改動重點：
+- **Slack 節點 operation = `sendAndWait`、approvalType = `double`**：一個節點同時做「發訊息 + 暫停 execution + 等回應 + 自動 resume」。訊息自動長出 Approve / Reject 兩顆按鈕（不再是裸 URL）。
+- **Rehydrate 節點改讀 `$json.data.approved`（boolean）**，不再 parse query string。
+- **`Approved?` IF 節點用 boolean 比較**，不再字串比 `'approve'`。
+- **approver 身分由 Slack OAuth credential 提供** — n8n 自動驗 Slack signing secret，audit row 的 `approver` 欄位現在真的可信。
+
+### 🔒 SECURITY-REVIEW SEC-9 收緊（[examples/einvoice-n8n/SECURITY-REVIEW.md](examples/einvoice-n8n/SECURITY-REVIEW.md)）
+
+從 v0.28.0「🟡 MITIGATED (documented, not implemented)」升級為 v0.33.0「✅ FIXED via v2 native pattern」。對 Slack 場景**不再需要前置 HMAC proxy**。v1（DIY 版）保留給**非 Slack** 場景使用（LINE Notify、WeCom、自家 Web UI — 這些目前 n8n 還沒有 `sendAndWait` operation，仍需要 v1 + 自製 HMAC 驗簽）。
+
+### 何時用 v1 vs v2（取捨表）
+
+| 你的核可介面 | 用哪版 |
+| --- | --- |
+| Slack / Telegram / Discord / MS Teams / WhatsApp / Email | **v2 native**（推薦） |
+| LINE Notify / WeCom / 自家 Web UI / 自家 IM | v1 DIY（要自己加 HMAC 前置驗簽） |
+
 ## v0.32.0 — twin-node test injection + n8n 上架命名規則 + sticky-note 語言鎖收緊 + 6/6 workflow runtime 報告
 
 回應使用者三條回饋：「測試 code node 就做兩個 node：正式 + 驗證（假資料）— 寫進 SKILL」、「workflow 上架名稱要 #N + 版本號 + 日期 — 寫進 SKILL」、「sticky note 跟啟動語言一致，案例 workflow 也沒有例外」。
