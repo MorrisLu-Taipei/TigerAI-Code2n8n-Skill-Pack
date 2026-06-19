@@ -1,5 +1,74 @@
 # Changelog
 
+## v0.31.0 — Sheet + Slack 本地 simulator + 完整 runtime 測試矩陣 + 報告推上
+
+回應使用者：「全部用模擬器跑完，寫測試報告」。本地 sandbox 擴充 Sheet sim（寫 CSV）+ Slack sim（寫 MD log）；測試矩陣跑完；報告 push 到 repo（sandbox / sim 程式仍依 v0.30.1 split 留本地）。
+
+### 🆕 [`examples/einvoice-n8n/tests/v0.31-local-sim-runtime-report.md`](examples/einvoice-n8n/tests/v0.31-local-sim-runtime-report.md)（推上）
+
+按 SKILL §1.6 evidence schema 寫的完整 runtime 報告，含：
+- §1：本地 simulator stack 架構
+- §2：為什麼 SDK happy-path 用真實 Amego sandbox（local sandbox 的 MIG payload mapping 尚未完整）
+- §3：測試矩陣 A-H（Amego 全生命週期、4 vendors capability、svc 信任邊界、Sheet/Slack sim、failure injection、n8n end-to-end 回顧、未做的 5 個 workflow）
+- §4：n8n REST API 不自動 register webhook 行為再次確認
+- §5：完整的 evidence schema（gate v1）
+- §6：decision（CLEARED for v0.31.0、NOT 替代 production hardening、v0.32 backlog）
+
+### 🆕 sandbox Sheet + Slack 模擬器（**本地、不推**）
+
+跟 sandbox 一起 excluded from git。功能：
+- `/sheet/append/:id/:tab` → 寫到 local CSV（header 自動偵測）
+- `/sheet/read/:id/:tab` → 回 CSV 文字
+- `/sheet/clear/:id/:tab` → 截斷（test isolation）
+- `/slack/chat.postMessage` → append 到 local MD log（每筆有 timestamp + channel）
+- `/slack/log` → 回 MD log 文字
+- `/slack/clear` → 截斷
+
+### 🩹 sandbox vendor router 路徑修正（本地、不推）
+
+對照各 SDK adapter 的真實 ENDPOINTS export，修了：
+- Amego：`/json/invoice_issue` → `/json/f0401`、`/json/invoice_invalid` → `/json/f0501`、allowance → g0401/g0501（MIG 4.0 form codes）
+- ezPay-CB：`/Api/cross_border_*` → `/Api/crossBorder*Issue` / `/Api/invoice_invalid` / `/Api/allowanceInvalid`（MIG 路徑命名）
+- ezReceipt：`/login` → `/admin/user/login`、`/invoices` → `/eInvoice/invoice/issue`、allowance → `/eInvoice/allowance/create`、查詢 → `/eInvoice/invoice/list`
+
+路徑修正後，svc → 本地 sandbox 的請求路由本身可達；payload 解析（MIG 完整對應）排 v0.32。
+
+### 為什麼這版重要
+
+- **報告寫成功了**：v0.27.0 → v0.30.3 一直 PENDING 的 end-to-end runtime smoke，這版有 §3.A（Amego 全生命週期）+ §3.D（Sheet/Slack sim）+ §3.E（failure injection 機制）的具體紀錄
+- **§1.6 lexical rule 被遵守**：報告全文不 emit 受限字眼，每個結論都附 evidence schema
+- **誠實揭露未做的部分**：5 個 workflow 沒透過 n8n 跑（§3.H）、4 vendors 沒 end-to-end（§3.B 只到 capability check）、stateful inject 因 MIG mapping 未完整而 PARTIAL（§3.E）
+
+### V&V evidence — gate v1（本版自我點檢）
+
+#### Layer 1 (structural)
+- JSON parse: PASS（6 workflow files）
+- security-scan.mjs: 0 errors / 3 expected warnings
+- live-roundtrip.mjs: 6/6 ok, tag `claude-import-2026-06-19`
+
+#### Layer 2 (runtime)
+- npm install (svc + sandbox): PASS
+- npm audit (svc + sandbox, high+): 0 vulnerabilities
+- tsc --noEmit (svc + sandbox): 0 errors
+- /healthz 200 (svc + sandbox): PASS
+- Unauthenticated /v1/* → 401: PASS
+- Negative tests (body limit / prototype dispatch / unknown enum): PASS
+- Workflow runtime contract: PASS（v0.30.2 patches survive fresh run）
+- Cross-document parity: PASS（報告引用 SECURITY-REVIEW、SKILL §1.6、REFLECTION）
+- End-to-end runtime smoke:
+  - Amego happy path（issue / void / query / idempotency）via svc + real Amego sandbox: PASS（§3.A）
+  - 4 vendors capability via svc: PASS（§3.B）
+  - Sheet sim direct: PASS（§3.D）
+  - Slack sim direct: PASS（§3.D）
+  - Sandbox stateless injection（5xx / auth-fail / quota-exhausted）: PASS（§3.E）
+  - Sandbox stateful injection（not-found / conflict）: PARTIAL — header reached, response wrong（MIG mapping gap, tracked-as v0.32）
+  - 4 vendors end-to-end happy path: PENDING tracked-as v0.32+
+  - 5 of 6 workflows end-to-end through n8n: PENDING tracked-as v0.32+
+
+本版不 emit 受限字眼。
+
+---
+
 ## v0.30.4 — 定位調整：方法論 + SKILLs + V&V gate 是賣點，案例是見證樣本
 
 純文件 / 純定位調整。回應使用者澄清：**Pack 的主軸是 n8n + 方法論；einvoice 只是學習與見證的案例，未來會有更多**。
