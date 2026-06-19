@@ -1,5 +1,34 @@
 # Changelog
 
+## v0.32.0 — twin-node test injection + n8n 上架命名規則 + sticky-note 語言鎖收緊 + 6/6 workflow runtime 報告
+
+回應使用者三條回饋：「測試 code node 就做兩個 node：正式 + 驗證（假資料）— 寫進 SKILL」、「workflow 上架名稱要 #N + 版本號 + 日期 — 寫進 SKILL」、「sticky note 跟啟動語言一致，案例 workflow 也沒有例外」。
+
+### 🆕 SKILL §1.7 — twin-node test injection
+
+新增 [`skills/tigerai/code2n8n-pipeline/SKILL.md`](skills/tigerai/code2n8n-pipeline/SKILL.md) §1.7：production node + `[TEST] <name>` Code 節點 sibling，兩個都連到同一個 downstream，toggle `disabled` flag 切換假資料 / 真資料。`einvoice-daily-reconcile` + `einvoice-monthly-audit-export` 已套用，runtime 驗證跑通（沒 Google Sheets credential 也能跑完整 pipeline）。
+
+### 🆕 SKILL §1.5.2 — n8n 上架命名規則
+
+新增 §1.5.2：workflow name 必須是 `[Claude #N v0.X.Y YYYY-MM-DD] <workflow-name>`。Critic Stage 10 gate 必含此檢查。`#N` 解決使用者上架多個時不知道 save 到第幾個的問題；`v0.X.Y` 對得回 SECURITY-REVIEW 該版本 status。
+
+### ⚠️ SKILL §1.5.1 修訂 — 沒有例外
+
+之前 §1.5.1 曾被誤寫成「案例 workflow 必須雙語」的例外條款 — 使用者明確反駁「以後通則就是跟啟動語言一致」。重寫為**無例外**，包括 ship 到 `examples/<case>/workflows/` 的長期資產。雙語 sticky note 亦違規（命中此次 einvoice 那批歷史殘留豁免清單除外）。memory `feedback_artefact_language_matches_user.md` 同步更新。
+
+### 🆕 [`examples/einvoice-n8n/tests/v0.32-all-six-runtime-report.md`](examples/einvoice-n8n/tests/v0.32-all-six-runtime-report.md)（推上）
+
+11 scenario × 6 workflow runtime smoke 報告（中文單語，依新 §1.5）：4 OK / 5 PARTIAL / 2 FAIL，所有 non-OK 結果**可追蹤至 sandbox 模擬器待補功能**（MIG response parser 不完整 + sandbox 寬容）— **不是 workflow / svc bug**。twin-node test injection 在 S4.1 / S6.1 兩個案例完美驗證。
+
+### ✏️ 6 個 einvoice workflow JSON sticky note 補中文（歷史殘留豁免）
+
+v0.27.0 創建時 implementing AI 自行用英文寫 sticky note，違反 §1.5。使用者選擇「將錯就錯」— 保留英文 + 補中文（單一 sticky 內）。**這是 one-off 歷史殘留**，未來案例不適用。
+
+### 🔖 feedback memory 更新
+
+- `feedback_n8n_import_marking.md`：name prefix 從 `[Claude YYYY-MM-DD]` 升級為 `[Claude #N v0.X.Y YYYY-MM-DD]`。
+- `feedback_artefact_language_matches_user.md`：明訂無例外、解釋為何此規則一直沒被抓到（behavioural rule 在 AI 上下文壓力下會被自我合理化繞過）+ 未來方向（升級成 §1.6 那樣的 lexical critic check）。
+
 ## v0.31.0 — Sheet + Slack 本地 simulator + 完整 runtime 測試矩陣 + 報告推上
 
 回應使用者：「全部用模擬器跑完，寫測試報告」。本地 sandbox 擴充 Sheet sim（寫 CSV）+ Slack sim（寫 MD log）；測試矩陣跑完；報告 push 到 repo（sandbox / sim 程式仍依 v0.30.1 split 留本地）。

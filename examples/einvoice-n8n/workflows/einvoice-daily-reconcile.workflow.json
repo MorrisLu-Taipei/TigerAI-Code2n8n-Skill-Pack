@@ -3,8 +3,8 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## einvoice-daily-reconcile (scheduler) — v0.28.0 hardened\n\n**v0.28.0 fixes (from V&V findings)**\n- workflow settings.timezone = `Asia/Taipei` so 02:00 fires in Taipei time AND `new Date()` in Code nodes uses Taipei-local intent. The yesterday calculation is now done with a Taipei locale string instead of UTC ISO slice that was off-by-one at 02:00 Taipei.\n- HTTP node uses `fullResponse: true` so `statusCode` and `body` exist.\n- The README-promised \"finance summary email\" — actually shipped as the `Email finance` node at the end of the diff branch.\n\n**Trigger**: Schedule 02:00 (Asia/Taipei).\n\n**Flow**\n1. Calculate yesterday in Asia/Taipei (handles DST n/a + tz drift correctly).\n2. Read Audit Sheet rows; filter to op=issue + appliedAt prefixed with yesterday + status=issued.\n3. Call svc /v1/query per candidate.\n4. Diff against expected `ISSUED` state.\n5. Mismatches → Mismatches tab + Slack alert.\n6. Always send finance daily summary email with green/mismatch counts.\n\n**Before activating**: replace `__REPLACE_ME__EINVOICE_SVC_URL__`, `__REPLACE_ME__GOOGLE_SHEET_ID__`, `__REPLACE_ME__SLACK_CHANNEL__`, `__REPLACE_ME__FINANCE_EMAIL__`.",
-        "height": 540,
+        "content": "## einvoice-daily-reconcile (scheduler) — v0.28.0 hardened\n\n**v0.28.0 fixes (from V&V findings)**\n- workflow settings.timezone = `Asia/Taipei` so 02:00 fires in Taipei time AND `new Date()` in Code nodes uses Taipei-local intent. The yesterday calculation is now done with a Taipei locale string instead of UTC ISO slice that was off-by-one at 02:00 Taipei.\n- HTTP node uses `fullResponse: true` so `statusCode` and `body` exist.\n- The README-promised \"finance summary email\" — actually shipped as the `Email finance` node at the end of the diff branch.\n\n**Trigger**: Schedule 02:00 (Asia/Taipei).\n\n**Flow**\n1. Calculate yesterday in Asia/Taipei (handles DST n/a + tz drift correctly).\n2. Read Audit Sheet rows; filter to op=issue + appliedAt prefixed with yesterday + status=issued.\n3. Call svc /v1/query per candidate.\n4. Diff against expected `ISSUED` state.\n5. Mismatches → Mismatches tab + Slack alert.\n6. Always send finance daily summary email with green/mismatch counts.\n\n**Before activating**: replace `__REPLACE_ME__EINVOICE_SVC_URL__`, `__REPLACE_ME__GOOGLE_SHEET_ID__`, `__REPLACE_ME__SLACK_CHANNEL__`, `__REPLACE_ME__FINANCE_EMAIL__`.\n\n---\n\n## 中文 — einvoice-daily-reconcile（核心 / 排程）\n\n**v0.28.0 修正紀錄**：\n- workflow settings.timezone = `Asia/Taipei`，凌晨 02:00 在台北時間 fire；Code 節點的日期運算改用 `Intl.DateTimeFormat` + 台北 locale，避免 UTC slice 在台北 02:00 算到「前天」的陷阱。\n- HTTP 節點 `fullResponse: true`，`statusCode` 真的存在。\n- README 承諾的「財務日報 email」實際做出來 — 在 diff 分支末端 `Email finance` 節點。\n\n**v0.32.0 加 twin-node**：`[TEST] Read Audit` Code 節點為 sibling，預設 disabled。runtime smoke 時 toggle 兩個 disabled flag 即可在沒有 Google Sheets credential 下跑完。\n\n**觸發**：Schedule 02:00（Asia/Taipei）。\n\n**流程**：\n1. 在台北時區算出昨天（處理 DST 不適用 + tz 漂移）。\n2. 讀 Audit Sheet 列；filter 出 op=issue + appliedAt 開頭是昨天 + status=issued。\n3. 對每筆呼 svc /v1/query。\n4. 跟期望 `ISSUED` 狀態比對。\n5. 不一致 → 寫 Mismatches tab + Slack 警示。\n6. 一律寄財務日報 email（含綠 / 不一致筆數）。\n\n**上線前需替換**：`__REPLACE_ME__EINVOICE_SVC_URL__`、`__REPLACE_ME__GOOGLE_SHEET_ID__`、`__REPLACE_ME__SLACK_CHANNEL__`、`__REPLACE_ME__FINANCE_EMAIL__`",
+        "height": 900,
         "width": 580
       },
       "id": "note-1",
@@ -65,6 +65,22 @@
         360,
         -40
       ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// [TEST] Twin-node test injection per code2n8n-pipeline SKILL §1.7.\n// Toggle THIS node disabled=false AND the sibling 'Read Audit' disabled=true\n// to run runtime smoke without a Google Sheets credential.\n// Schema MUST match what 'Read Audit' would return (a list of items shaped\n// like a previously-written 'Audit' tab row).\nreturn [\n  { json: { correlationId: 'fake-yest-001', op: 'issue', provider: 'amego', orderId: 'order-yest-001', invoiceNumber: 'AA00000001', status: 'issued', result: JSON.stringify({ invoiceNumber: 'AA00000001' }), appliedAt: '2026-06-18T03:15:00.000Z' } },\n  { json: { correlationId: 'fake-yest-002', op: 'issue', provider: 'amego', orderId: 'order-yest-002', invoiceNumber: 'AA00000002', status: 'issued', result: JSON.stringify({ invoiceNumber: 'AA00000002' }), appliedAt: '2026-06-18T09:42:00.000Z' } },\n  { json: { correlationId: 'fake-yest-003', op: 'issue', provider: 'amego', orderId: 'order-yest-003', invoiceNumber: 'AA00000999', status: 'issued', result: JSON.stringify({ invoiceNumber: 'AA00000999' }), appliedAt: '2026-06-18T14:20:00.000Z' } }\n];"
+      },
+      "id": "read-test-1",
+      "name": "[TEST] Read Audit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        80
+      ],
+      "disabled": true
     },
     {
       "parameters": {
@@ -279,6 +295,17 @@
       ]
     },
     "Read Audit": {
+      "main": [
+        [
+          {
+            "node": "Filter to yesterday",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[TEST] Read Audit": {
       "main": [
         [
           {

@@ -3,8 +3,8 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## einvoice-provider-failover (sub-workflow) — v0.28.0 hardened\n\n**Fixes**: HTTP `fullResponse: true`; state rehydration explicit; tz set; svc `/v1/route` now validates `op` server-side (SEC-2), but this WF still passes through the body for defense-in-depth.\n\n**Called by other workflows** with:\n```json\n{ \"capability\": \"FOREIGN_CURRENCY\", \"candidates\": [\"amego\", \"ezpay-crossborder\"], \"op\": \"issue\", \"input\": { ... } }\n```\n\n**Allowed op values** (must match the svc allowlist): `issue | void | allowance | voidAllowance | query`.\n\n**Before activating**: replace `__REPLACE_ME__EINVOICE_SVC_URL__`, `__REPLACE_ME__GOOGLE_SHEET_ID__`.",
-        "height": 460,
+        "content": "## einvoice-provider-failover (sub-workflow) — v0.28.0 hardened\n\n**Fixes**: HTTP `fullResponse: true`; state rehydration explicit; tz set; svc `/v1/route` now validates `op` server-side (SEC-2), but this WF still passes through the body for defense-in-depth.\n\n**Called by other workflows** with:\n```json\n{ \"capability\": \"FOREIGN_CURRENCY\", \"candidates\": [\"amego\", \"ezpay-crossborder\"], \"op\": \"issue\", \"input\": { ... } }\n```\n\n**Allowed op values** (must match the svc allowlist): `issue | void | allowance | voidAllowance | query`.\n\n**Before activating**: replace `__REPLACE_ME__EINVOICE_SVC_URL__`, `__REPLACE_ME__GOOGLE_SHEET_ID__`.\n\n---\n\n## 中文 — einvoice-provider-failover（sub-workflow / 容錯路由）\n\n**修正紀錄**：HTTP `fullResponse: true`；state rehydration 明確；tz 設好；svc `/v1/route` server side 驗 `op`（SEC-2）；workflow 仍在 body 帶過去做 defense-in-depth。\n\n**被其他 workflow 呼叫**，body 例：\n```json\n{ \"capability\": \"FOREIGN_CURRENCY\", \"candidates\": [\"amego\", \"ezpay-crossborder\"], \"op\": \"issue\", \"input\": { ... } }\n```\n\n**允許的 op 值**（必須跟 svc 白名單一致）：`issue | void | allowance | voidAllowance | query`。\n\n**上線前需替換**：`__REPLACE_ME__EINVOICE_SVC_URL__`、`__REPLACE_ME__GOOGLE_SHEET_ID__`",
+        "height": 900,
         "width": 580
       },
       "id": "note-1",

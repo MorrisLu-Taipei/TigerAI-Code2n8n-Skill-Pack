@@ -3,8 +3,8 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## einvoice-monthly-audit-export (scheduler) — v0.28.0 hardened\n\n**v0.28.0 fixes (from V&V findings)**\n- Asia/Taipei tz set on workflow + tz-correct prev-month computation (was UTC-based → on 1st of month 03:00 Taipei, UTC was previous month → would have walked back two months).\n- Added `Convert to File` node so the Email node's binary `data` property exists (was `json.csv` only → email attach silently failed).\n- Email `attachments` uses the binary property name `data` set by Convert to File.\n\n**Trigger**: 1st of every month, 03:00 Asia/Taipei.\n\n**Flow**\n1. Compute previous calendar month in Asia/Taipei.\n2. Read Audit Sheet rows whose appliedAt is in that month.\n3. Render CSV string.\n4. Convert to binary file (n8n-nodes-base.convertToFile).\n5. Email accountant with CSV attached.\n6. Append summary row to Monthly Summary tab.\n\n**Before activating**: replace `__REPLACE_ME__GOOGLE_SHEET_ID__`, `__REPLACE_ME__ACCOUNTANT_EMAIL__`; attach SMTP/Gmail credential.",
-        "height": 540,
+        "content": "## einvoice-monthly-audit-export (scheduler) — v0.28.0 hardened\n\n**v0.28.0 fixes (from V&V findings)**\n- Asia/Taipei tz set on workflow + tz-correct prev-month computation (was UTC-based → on 1st of month 03:00 Taipei, UTC was previous month → would have walked back two months).\n- Added `Convert to File` node so the Email node's binary `data` property exists (was `json.csv` only → email attach silently failed).\n- Email `attachments` uses the binary property name `data` set by Convert to File.\n\n**Trigger**: 1st of every month, 03:00 Asia/Taipei.\n\n**Flow**\n1. Compute previous calendar month in Asia/Taipei.\n2. Read Audit Sheet rows whose appliedAt is in that month.\n3. Render CSV string.\n4. Convert to binary file (n8n-nodes-base.convertToFile).\n5. Email accountant with CSV attached.\n6. Append summary row to Monthly Summary tab.\n\n**Before activating**: replace `__REPLACE_ME__GOOGLE_SHEET_ID__`, `__REPLACE_ME__ACCOUNTANT_EMAIL__`; attach SMTP/Gmail credential.\n\n---\n\n## 中文 — einvoice-monthly-audit-export（核心 / 月底排程）\n\n**v0.28.0 修正紀錄**：\n- workflow tz `Asia/Taipei` + 用台北時區算上個月（之前 UTC base → 每月 1 日 03:00 台北會倒退到上上個月）。\n- 加 `Convert to File` 節點，把 CSV 字串變 binary，讓 Email 附件的 `data` property 真的存在（之前只有 `json.csv`，Email 附件靜默失敗）。\n- Email `attachments` 用 Convert to File 產生的 binary property 名 `data`。\n\n**v0.32.0 加 twin-node**：`[TEST] Read Audit` Code 節點為 sibling、預設 disabled、含 5 筆假上月 audit row。runtime smoke 時 toggle 兩個 disabled flag 即可在沒有 Google Sheets credential 下跑完。\n\n**觸發**：每月 1 日 03:00（Asia/Taipei）。\n\n**流程**：\n1. 算出上一個月份（台北時區）。\n2. 讀 Audit Sheet 屬於該月份的列。\n3. 渲染 CSV 字串。\n4. `Convert to File` 轉成 binary。\n5. Email 寄會計（附 CSV）。\n6. Append summary row 到 Monthly Summary tab。\n\n**上線前需替換**：`__REPLACE_ME__GOOGLE_SHEET_ID__`、`__REPLACE_ME__ACCOUNTANT_EMAIL__`，HTTP/Email/Sheet 各掛對應 credential。",
+        "height": 900,
         "width": 580
       },
       "id": "note-1",
@@ -66,6 +66,22 @@
         360,
         -40
       ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// [TEST] Twin-node test injection per code2n8n-pipeline SKILL §1.7.\n// Toggle THIS node disabled=false AND the sibling 'Read Audit' disabled=true\n// to run runtime smoke without a Google Sheets credential.\n// Schema MUST match what 'Read Audit' would return — entries spanning the\n// previous calendar month so 'Render CSV' has work to do.\nreturn [\n  { json: { correlationId: 'fake-prev-001', op: 'issue', provider: 'amego', orderId: 'o-001', invoiceNumber: 'AA00010001', status: 'issued', appliedAt: '2026-05-03T10:00:00.000Z' } },\n  { json: { correlationId: 'fake-prev-002', op: 'issue', provider: 'amego', orderId: 'o-002', invoiceNumber: 'AA00010002', status: 'issued', appliedAt: '2026-05-10T12:00:00.000Z' } },\n  { json: { correlationId: 'fake-prev-003', op: 'void', provider: 'amego', orderId: 'o-001', invoiceNumber: 'AA00010001', status: 'voided', appliedAt: '2026-05-12T09:00:00.000Z' } },\n  { json: { correlationId: 'fake-prev-004', op: 'allowance', provider: 'amego', orderId: 'o-002', invoiceNumber: 'AA00010002', status: 'allowed', appliedAt: '2026-05-15T15:00:00.000Z' } },\n  { json: { correlationId: 'fake-prev-005', op: 'issue', provider: 'amego', orderId: 'o-003', invoiceNumber: 'AA00010003', status: 'issued', appliedAt: '2026-05-28T11:30:00.000Z' } }\n];"
+      },
+      "id": "read-test-1",
+      "name": "[TEST] Read Audit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        80
+      ],
+      "disabled": true
     },
     {
       "parameters": {
@@ -184,6 +200,17 @@
       ]
     },
     "Read Audit": {
+      "main": [
+        [
+          {
+            "node": "Render CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[TEST] Read Audit": {
       "main": [
         [
           {
