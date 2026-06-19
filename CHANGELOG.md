@@ -1,5 +1,52 @@
 # Changelog
 
+## v0.30.4 — 定位調整：方法論 + SKILLs + V&V gate 是賣點，案例是見證樣本
+
+純文件 / 純定位調整。回應使用者澄清：**Pack 的主軸是 n8n + 方法論；einvoice 只是學習與見證的案例，未來會有更多**。
+
+### 🩹 README hero proof bar 改寫（en + zh）
+
+舊框架：「Proof bar — marquee skill is grounded in 3 real ports」（案例支撐 Pack 的宣稱）
+
+新框架：「Case study evidence — samples of the methodology applied, not the deliverable」（Pack 的賣點是方法論本身，案例是方法論被套用後的樣本）
+
+具體改動：
+- Section heading 從「Proof bar」改成「Case study evidence」（en） / 「案例見證」（zh）
+- 開頭新增一段話：「The deliverable is the methodology + 15 SKILLs + templates + V&V gate + main/critic architecture above. Case studies below are evidence of methodology applied to real codebases, kept in `examples/` as reference. More will be added as new GitHub repos go through the `code2n8n-pipeline` SKILL.」
+- 表格欄位「Headline number」改成「Methodology status」 — 強調該行是「方法論套用到此案例的狀態」、不是「該案例的成就」
+- einvoice 列更新到 v0.30.3 狀態：16 個 SEC-### (13 修 / 3 追蹤)、svc 0 tsc errors / 0 high+ CVE、1 個 workflow 在 v0.30.2 對使用者 localhost n8n + 真實 Amego sandbox 跑過 end-to-end runtime smoke（真實 invoice `AA26514637` 回來）、其他 5 個 workflow 的 end-to-end smoke 尚未跑、引用 REFLECTION.md
+- 末段改寫：「Each row is one sample. When a case surfaces a new failure mode (Code v2 contract drift, ghost cron, webhook-register asymmetry, etc.) the methodology upgrades — the case becomes a permanent record of what the upgrade was for.」
+
+### 🧹 本地測試殘留清乾淨（不影響 repo）
+
+v0.30.2 真實 n8n smoke 留下的東西全清掉：
+- n8n workflow `VTpkKSRO4RvnthMv`（deactivate + delete）
+- n8n credential `NAvCEAt9x9WvLpY8`（delete）
+- sandbox 本地 process（port 9091 closed）
+- svc 本地 process（port 8788 closed）
+
+這些本來就只在使用者 localhost、不在 repo 內，cleanup 不會動到 git。
+
+### 為什麼這版重要
+
+確立 Pack 的長期身份：**n8n 方法論 Pack**，不是「einvoice 範例 Pack」。einvoice 之所以在 v0.27.0 → v0.30.3 占了大量篇幅，是因為它是**第一個外部 SDK 案例**，順便把 §1.5 / §1.6 / SKILL Stage 8-10 contract checks 打進方法論。未來每個新案例都會走 [`code2n8n-pipeline`](skills/tigerai/code2n8n-pipeline/SKILL.md) SKILL、各自留下 SECURITY-REVIEW（必要時 REFLECTION）、可能再升級方法論一次，但都**不會搶 Pack 主軸的篇幅**。
+
+### V&V evidence — gate v1（本版自我點檢）
+
+#### Layer 1 (structural)
+- JSON parse: N/A（沒動 workflow JSON）
+- security-scan.mjs: N/A
+- live-roundtrip.mjs: N/A
+
+#### Layer 2 (runtime)
+- npm install / audit / tsc / smoke: N/A（沒動 svc）
+- Cross-document parity: PASS — README hero proof bar 重述「Pack = 方法論」這條與 SKILL §1.1 / §1.5 / §1.6 / Stage 0-11 全程一致
+- End-to-end runtime smoke: N/A
+
+本版**不**emit 受限字眼。
+
+---
+
 ## v0.30.3 — Meta-reflection 與 lexical schema-before-claim rule
 
 純文件 / 規則層更新。回應 v0.30.2 之後使用者的問題：「為什麼有那些 bug，你學下來了嗎」— 把 meta-lesson 寫成 (A) 永久 reflection 紀錄、(B) 強制執行的 lexical rule。

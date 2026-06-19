@@ -51,16 +51,18 @@ Code2n8n **does not transliterate every line of Python or JavaScript into nodes*
 
 > **AI Coding solves "how is the function built"; Code2n8n solves "how is the capability modularized *and audited*"; n8n solves "how the modules cooperate across the whole enterprise."**
 
-### 🧪 Proof bar — the marquee skill is grounded in 3 real ports
+### 🧪 Case study evidence — samples of the methodology applied, not the deliverable
 
-| Case | Upstream → n8n | Headline number |
+> The deliverable is the **methodology + 15 SKILLs + templates + V&V gate (§10 two-layer + A2A 11-language + §1.6 lexical) + main/critic architecture** above. Case studies below are **evidence of methodology applied to real codebases**, kept in `examples/` as reference. More will be added as new GitHub repos go through the [`code2n8n-pipeline`](skills/tigerai/code2n8n-pipeline/SKILL.md) SKILL. Each case maintains its own `SECURITY-REVIEW.md` and (where the case surfaced new methodology gaps) `REFLECTION.md`.
+
+| Case | Upstream → n8n | Methodology status |
 |---|---|---|
-| [Google Workspace admin](examples/google-workspace-admin-workflow/) | 1,373-line Apps Script → 7 workflows (core + entry + setup) | Static lint 0 err / 0 warn · n8n REST import 7/7 · **live execution requires your Google Workspace credentials** |
-| [LINE customer service (cloud)](examples/line-ai-customer-service/) | Netlify + Supabase → core + entry + approach-C admin | Static lint 0 err / 0 warn · n8n REST import 6/6 · **live execution requires your LINE + Supabase credentials** |
-| [LINE customer service (on-prem)](examples/line-ai-customer-service-onprem/) | Docker + Postgres + Redis + Qdrant + Ollama → 37-node brain | 5-phase V&V; security review concluded **BLOCKED — DO NOT DEPLOY AS-IS** (kept as a teaching artefact, see [`SECURITY-REVIEW.md`](examples/line-ai-customer-service-onprem/SECURITY-REVIEW.md)) |
-| [Taiwan e-invoice unified SDK](examples/einvoice-n8n/) | TypeScript SDK ([`MorrisLu-Taipei/einvoice`](https://github.com/MorrisLu-Taipei/einvoice), 5 providers) → 80-line Hono wrapper svc + 6 governance workflows | **v0.28.0 hardened**: svc `tsc` 0 err · `npm audit` 0 CVE · `/healthz` 200 · 13 SEC-### findings in [`SECURITY-REVIEW.md`](examples/einvoice-n8n/SECURITY-REVIEW.md) (9 fixed, 4 tracked) · scanner 0 err / 3 expected warn · REST import 6/6 · **end-to-end runtime smoke pending v0.29** (no false-positive "validated" claim) |
+| [Google Workspace admin](examples/google-workspace-admin-workflow/) | 1,373-line Apps Script → 7 workflows (core + entry + setup) | Static lint 0 err / 0 warn · n8n REST import 7/7 · live execution requires your Google Workspace credentials |
+| [LINE customer service (cloud)](examples/line-ai-customer-service/) | Netlify + Supabase → core + entry + approach-C admin | Static lint 0 err / 0 warn · n8n REST import 6/6 · live execution requires your LINE + Supabase credentials |
+| [LINE customer service (on-prem)](examples/line-ai-customer-service-onprem/) | Docker + Postgres + Redis + Qdrant + Ollama → 37-node brain | 5-phase V&V; security review concluded **BLOCKED — DO NOT DEPLOY AS-IS** (kept as teaching artefact, see [`SECURITY-REVIEW.md`](examples/line-ai-customer-service-onprem/SECURITY-REVIEW.md)) |
+| [Taiwan e-invoice unified SDK](examples/einvoice-n8n/) | TypeScript SDK ([`MorrisLu-Taipei/einvoice`](https://github.com/MorrisLu-Taipei/einvoice), 5 providers) → 80-line Hono wrapper svc + 6 governance workflows | **The case that drove §1.5 / §1.6 / SKILL Stage 8-10 contract checks into the methodology.** v0.30.3 status: 16 SEC-### in [`SECURITY-REVIEW.md`](examples/einvoice-n8n/SECURITY-REVIEW.md) (13 fixed, 3 tracked); svc 0 tsc errors / 0 high+ CVEs; scanner 0 errors / 3 expected warnings; REST import 6/6; 1 workflow's end-to-end runtime smoke ran against the user's localhost n8n + real Amego sandbox in v0.30.2 (real invoice `AA26514637` returned); other 5 workflows' end-to-end smoke not yet run. Reflection on why bugs survived earlier review: [`REFLECTION.md`](examples/einvoice-n8n/REFLECTION.md). |
 
-Full evidence table further down. The bar above is what *immediately* backs the two-path claim — if any of these three case studies disappear, the claim weakens.
+Each row is one sample. When a case surfaces a new failure mode (Code v2 contract drift, ghost cron, webhook-register asymmetry, etc.) the methodology upgrades — the case becomes a permanent record of what the upgrade was for.
 
 > 🛠️ **Responsibility boundary**: The third block of the hero diagram ("n8n Enterprise Orchestration") lists SSO / IAM / audit log / HA — **n8n Enterprise ships these out of the box**, the Pack does not reimplement them. The Pack's job is to make sure Code2n8n-produced workflows *land cleanly* on top (IAM-friendly, queue-safe, rollback-traceable). The split between Pack / n8n Enterprise / your IT, and the workflow-design rules that follow, are in [`docs/enterprise-setup.md`](docs/enterprise-setup.md).
 >
