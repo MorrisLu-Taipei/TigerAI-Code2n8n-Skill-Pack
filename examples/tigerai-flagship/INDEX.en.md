@@ -2,6 +2,12 @@
 
 > 🌐 **English** | [繁體中文](INDEX.md)
 
+> ## v1.0 status — Pre-v1.0 reference workflows
+>
+> This directory contains **production-grade reference samples** from TigerAI's internal workflow library (embodying the 4 enterprise patterns). It is **not** part of the v1.0 Path B verification trio (port → security review → real-vendor-sandbox runtime). For the v1.0 CLEARED case with that full evidence, see [`examples/einvoice-n8n/`](../einvoice-n8n/).
+>
+> See [`README.md`](README.md) (English-first intro) + the full claims/evidence index at [`docs/v1-claims-and-evidence.md`](../../docs/v1-claims-and-evidence.md).
+
 > Three battle-tested workflows from TigerAI's internal workflow library that embody the four pillars, with SDD docs and reproduction steps.
 > (Unrelated to MCP; the upstream folder name `n8n-mcp-json` is purely historical.)
 > Different from `cookbook/` (educational): these are **production-grade examples** with credential templates, Worker deploy needs, and SDD specs.

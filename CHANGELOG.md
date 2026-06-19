@@ -1,5 +1,44 @@
 # Changelog
 
+## v1.0.4 — README 各語文版本全同步 v1.0（中文頂層 README + 3 個 English 副 README + tigerai-flagship INDEX 雙語）
+
+Goal-driven release: 「README 更新的相關內容 #1 全部重新檢查有沒有遺漏 #2 各語文版本需要更新」。Deep audit 後找到 5 處 gap 全補：
+
+### 5 處更新
+
+| # | 檔案 | 狀態 | 動作 |
+| --- | --- | --- | --- |
+| 1 | `README.zh.md` (中文頂層) | 🔴 完全沒升 v1.0 | 加完整 v1.0 banner（mirror README.md v1.0.2）+ 4-case spectrum 加 ⭐ einvoice v1.0 CLEARED + License 加 einvoice + title 加 A2A |
+| 2 | `examples/google-workspace-admin-workflow/README.en.md` | 🟡 沒 v1.0 status banner | 加 v1.0 status banner（English 版鏡像 v1.0.3 中文 banner）|
+| 3 | `examples/line-ai-customer-service/README.en.md` | 🟡 沒 v1.0 status banner | 加 v1.0 status banner（English 版鏡像 v1.0.3 中文 banner）|
+| 4 | `examples/line-ai-customer-service-onprem/README.md` (English summary 段) | 🟡 v1.0.3 中文部分有 banner，英文 summary 段沒 | 在 English summary 開頭加 v1.0 status banner（DO NOT DEPLOY AS-IS 強調）|
+| 5 | `examples/tigerai-flagship/INDEX.md` + `INDEX.en.md` | 🟡 v1.0.3 加了 README.md thin shell 但 INDEX 沒標 pre-v1.0 | 兩個 INDEX 都在開頭加 v1.0 status 段（pre-v1.0 reference workflows，不屬 v1.0 Path B verification trio）|
+
+### V&V Layer 1
+
+- `scripts/security-scan.mjs --glob "examples/**/*.workflow.json"` → 30 files, 0 error / 20 documented warning（regression-free）
+- `scripts/self-scan-forbidden-phrases.mjs` 進度：
+  - README.zh.md v1.0 banner 12 個受限字眼全 OK；剩 5 個 violations 在文件深處（同列 migration backlog）
+  - Total violations: 21 → 16（README.zh.md 從 ~10 違規降至 5）
+
+### V&V Layer 2
+
+- 文件級 release；既有 runtime evidence stack 全部 PASS
+
+### Pack 跨語言 README 結構現況（v1.0.4 收尾）
+
+| 案例 / 文件 | 中文版 | 英文版 |
+| --- | --- | --- |
+| Pack 頂層 | ✅ README.zh.md（v1.0 banner ship）| ✅ README.md（v1.0 banner ship v1.0.2）|
+| CODE2N8N 宣言 | ✅ CODE2N8N.md 內中文 section（v1.0.3） | ✅ CODE2N8N.md 內英文 section（v1.0.3）|
+| GW admin | ✅ README.md（v1.0.3 banner） | ✅ README.en.md（v1.0.4 banner） |
+| LINE cloud | ✅ README.md（v1.0.3 banner） | ✅ README.en.md（v1.0.4 banner） |
+| LINE on-prem | ✅ README.md 中文段（v1.0.3 banner） | ✅ README.md 英文 summary 段（v1.0.4 banner） |
+| einvoice | ✅ README.md（v1.0.3 結案驗證單元 + V&V/security section） | — (中文單語，依 §1.5 鎖定) |
+| tigerai-flagship | ✅ INDEX.md（v1.0.4 註記） | ✅ INDEX.en.md（v1.0.4 註記）+ README.md（v1.0.3 thin shell）|
+
+跨語言 README 達到 v1.0 同步完整狀態 ✅
+
 ## v1.0.3 — CODE2N8N.md v1.0 rewrite + License completeness + case READMEs v1.0 status banner
 
 User feedback:

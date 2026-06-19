@@ -1,7 +1,42 @@
-# TigerAI Code2n8n Skill Pack — 使用手冊
+# TigerAI A2A Code2n8n Skill Pack — 使用手冊
+
+> **TigerAI A2A Code2n8n Skill Pack — v1.0 Production-Grade Methodology**
+> *用 AI 從自然語言 sticky note 或既有程式碼建構企業級 n8n workflow。A2A directive 驅動 · 4-Tier 外部依賴安全 CI 自動 enforce · Path B 真實 vendor sandbox runtime 證據。*
 
 > 🌐 [English](README.md) | **繁體中文**
 > 📖 **什麼是 Code2n8n？** 讀 [Code2n8n 宣言](CODE2N8N.md) — 為什麼 AI Coding 時代企業反而**更**需要 n8n。
+
+> ## 🚀 v1.0 release — evidence-first（依 §1.6 lexical schema-before-claim rule）
+>
+> ### V&V evidence — gate v1
+>
+> **Layer 1（結構層）** — JSON parse PASS · `security-scan.mjs` 0 error / 20 documented warning · `live-roundtrip.mjs` 14/14 ok
+>
+> **Layer 2（runtime — Path B einvoice 案例）**
+> - svc：`npm install` / `npm audit --audit-level=high` / `tsc --noEmit` PASS（exact pins、`npm ci` 鎖、CI fail-gate 自 v0.36.0 起綁定）
+> - 對**真實 vendor sandbox** end-to-end runtime：
+>   - Amego SDK capability — **10/10 PASS**（ISSUE / VOID / ALLOWANCE / VOID_ALLOWANCE / QUERY / B2B / MIXED_TAX / QUERY_BY_ORDER_ID / CARRIER 手機條碼 / FOREIGN_CURRENCY）
+>   - Amego DONATION（愛心碼）：**PARTIAL** — Amego raw response 不 echo donation 欄位（verification-method 限制，非 workflow bug）
+>   - Amego SCHEDULED_ISSUE：SDK gap 已 capture 為 [SEC-021](examples/einvoice-n8n/SECURITY-REVIEW.md) — 透過 [`einvoice-capability-aware-gate`](examples/einvoice-n8n/workflows/einvoice-capability-aware-gate.workflow.json) mitigate；upstream issue 將提至 `paid-tw/einvoice`
+> - 真實 Amego sandbox 發票 trace（可在 Amego 後台查得）：`AA26515011` · `AA26515012` · `A1781885120033` · `AA26515015` · `AA26515016` · `AA26515018` · `AA26515019` · `AA26515020`（共 11 張）
+> - SEC entries：**20 ✅ FIXED · 1 OPEN（mitigated）· 1 documented meta-lesson** — 見 [SECURITY-REVIEW.md](examples/einvoice-n8n/SECURITY-REVIEW.md)
+>
+> ### Claim — Path B 完整跑通（轉換 → 資安驗證 → 真實 sandbox runtime PASS）
+>
+> 上述 evidence 在席（依 [V&V A2A directive](docs/code2n8n-vv-a2a.md)，11 國語言 machine-readable spec）。**v1.0 ship 內容**：
+>
+> - ✅ **轉換** — [`@paid-tw/einvoice`](https://github.com/paid-tw/einvoice) TypeScript SDK（5 家供應商、MIG 4.0）→ 80 行 Hono `svc` + 14 個 n8n workflow
+> - ✅ **資安驗證** — 22 SEC entries + 4-Tier 外部依賴安全 CI 自動 enforce（[posture](docs/external-package-security-posture.md)、[A2A directive 英文](docs/external-dependency-security-a2a.md) / [中文](docs/external-dependency-security-a2a.zh.md)）
+> - ✅ **真實 sandbox runtime PASS** — Amego 10/10 SDK capability 對真實 Amego public sandbox PASS（runtime evidence 同上 Layer 2 區塊）
+>
+> **結案報告**：[`tests/v0.41-final-validation-report.md`](examples/einvoice-n8n/tests/v0.41-final-validation-report.md) · **Claims & evidence index**：[`docs/v1-claims-and-evidence.md`](docs/v1-claims-and-evidence.md)
+>
+> ### 誠實範圍（v1.0 **不**宣稱）
+>
+> - ❌ **5 家發票供應商全 runtime PASS** — 僅 Amego 有真實 sandbox runtime 證據；ECPay / ezPay / ezPay 跨境 / ezReceipt 無公開 sandbox 帳號（結構層 OK；可用 SDK 內建 `MockProvider` 驗 — 見 [SEC-022](examples/einvoice-n8n/SECURITY-REVIEW.md)）
+> - ❌ **所有 case study 都可上線** — 只 einvoice 案例 CLEARED；GW admin / LINE cloud 結構層 PASS、需 caller credentials；LINE on-prem 標 **DO NOT DEPLOY AS-IS**
+> - ❌ **npm 套件 100% 安全** — 4-Tier 治理擋住已知失敗模式；新型 supply chain 攻擊永遠可能繞過；本 Pack 提供 defense-in-depth，非 100% 保證
+> - ❌ **v1.0 = 完成** — v1.0 = Path B 第一次完整跑通 + 全部 SEC entries 公開 + 治理 SOP 落地。v1.x 持續演進
 
 > **Code2n8n 的定位**：AI Coding（Claude Code / Codex / Antigravity）擅長把程式「寫出來」；n8n 擅長把程式變成「企業管得住」的流程資產。這個 pack 就是兩者之間的橋 — **描述一個需求，或 指向一個既有系統**（Apps Script / Express / Lambda / Docker stack），產出 IT、營運、主管都看得懂、稽核得了、交接得下去、跨系統治理得來的 n8n workflow。
 
@@ -300,8 +335,11 @@ TigerAI-Code2n8n-Skill-Pack/
 | [Google Workspace 行政流程](examples/google-workspace-admin-workflow/) | 1,373 行 Apps Script → core + entry n8n workflows | `PROVENANCE.md` 逐項對照；靜態 lint 0 err / 0 warn；n8n REST import 7/7；實際執行需自備 Google Workspace credential |
 | [LINE AI 客服雲端版](examples/line-ai-customer-service/) | Netlify Functions + Supabase → n8n runtime + approach C 後台 | 靜態 lint 0 err / 0 warn；n8n REST import 6/6；實際執行需自備 LINE + Supabase credential |
 | [LINE AI 客服地端版](examples/line-ai-customer-service-onprem/) | Docker + Postgres + Redis + Qdrant + Ollama + n8n | 37 節點 workflow、5 階段 V&V；安全審查揭露重大缺陷，**不可直接上線** |
+| [**台灣電子發票（einvoice-n8n）**](examples/einvoice-n8n/) ⭐ **v1.0 CLEARED** | `@paid-tw/einvoice` SDK（5 家供應商、MIG 4.0）→ Hono `svc` 包裝 + 14 個 n8n workflow | **Amego 10/10 SDK capability 對真實 Amego sandbox PASS**（11 張真實發票 trace）；22 個 SEC entries（20 ✅ / 1 mitigated / 1 documented）；4-Tier 外部依賴安全 CI 自動 enforce；A2A directives 中文 + 英文版 |
 
 第三個案例刻意保留上游 POC 的安全缺陷並公開記錄於 [`SECURITY-CAVEATS.md`](examples/line-ai-customer-service-onprem/SECURITY-CAVEATS.md)。這不是「驗收失敗被藏起來」，而是 Code2n8n 的核心原則：**AI 寫的能跑，不代表企業能上線。**
+
+第四個案例（einvoice）是 **Pack 內第一個 ship CLEARED 的 case**，有真實 vendor sandbox runtime 證據 — 詳見其 [結案驗證報告](examples/einvoice-n8n/tests/v0.41-final-validation-report.md)。
 
 ---
 
@@ -334,6 +372,7 @@ TigerAI-Code2n8n-Skill-Pack/
 - `skills/_vendor/`：MIT — 來自 [czlonkowski/n8n-skills](https://github.com/czlonkowski/n8n-skills)，見 `skills/_vendor/LICENSE`
 - `reference-workflows/`：MIT — 來自 [Zie619/n8n-workflows](https://github.com/Zie619/n8n-workflows)。原始檔內的 API token / bearer token 等密鑰，於收錄前已替換為佔位符（如 `YOUR_API_TOKEN_HERE`）
 - `examples/line-ai-customer-service-onprem/`：MIT 授權衍生自 `scorpioliu0953/ai_customer_service`，出處鏈見該範例的 `CREDITS.md`
+- `examples/einvoice-n8n/`：MIT 授權衍生自 [`paid-tw/einvoice`](https://github.com/paid-tw/einvoice) TypeScript SDK（5 家供應商、MIG 4.0）。Pack 的 `svc/` Hono wrapper + 14 個 n8n workflow + SECURITY-REVIEW + Amego sandbox runtime 測試 runner 為 TigerAI MIT 自製。SDK adapter 透過 `npm install @paid-tw/einvoice*` exact-pin 引用（依 [SEC-017](examples/einvoice-n8n/SECURITY-REVIEW.md)）；本 repo **不** vendoring SDK source。
 - 其餘（TigerAI 自製 skills、cookbook、spec、docs、安裝腳本、Code2n8n 宣言、marquee `code-to-workflow` skill 等）：**MIT**（Copyright (c) 2026 Morris Lu / TigerAI）
 
 完整第三方授權聲明見 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)。

@@ -147,6 +147,19 @@ line-ai-customer-service-onprem/
 
 ## English summary
 
+> ### v1.0 status — DO NOT DEPLOY AS-IS (teaching artefact)
+>
+> | Aspect | Status |
+> | --- | --- |
+> | **Code2n8n path** | Path B: Docker + Postgres + Redis + Qdrant + Ollama + n8n (37-node dynamic brain) |
+> | **Position in [4-case spectrum](../../CODE2N8N.md#the-4-case-spectrum-code2n8n-journeys-ship-in-this-pack)** | #3 of 4 |
+> | **Layer 1 V&V** (structural) | ✅ 5-phase V&V |
+> | **Layer 2 V&V** (runtime) | 🔴 **Security audit disclosed major defects — DO NOT DEPLOY AS-IS** — full disclosure in [`SECURITY-CAVEATS.md`](SECURITY-CAVEATS.md) |
+> | **Upstream license** | MIT — [`scorpioliu0953/ai_customer_service`](https://github.com/scorpioliu0953/ai_customer_service) (attribution in [`CREDITS.md`](CREDITS.md)) |
+> | **Why preserved** | Teaching artefact — fully retains the demo-ready POC's typical security defects (fake auth / no middleware / SQL identifier injection / plaintext passwords / exposed secrets / no CSRF / no rate limit / no audit log) so readers can walk through Step 1.5 Security Audit themselves |
+> | **Contrast with v1.0 CLEARED case (einvoice)** | This case is the **specimen** of "demo runs, enterprise can't deploy" — echoing the CODE2N8N manifesto core thesis: AI-written software that runs is not automatically software an enterprise can deploy |
+> | **Claims & evidence** | [v1-claims-and-evidence.md](../../docs/v1-claims-and-evidence.md) |
+
 **⚠️ Not production-safe.** A real-world POC port: we took an **MIT-licensed** open-source project (`scorpioliu0953/ai_customer_service`) and walked it through the full Code2n8n pipeline into an **on-prem Docker stack** (Postgres + Redis + Qdrant + Ollama) with a matching n8n "dynamic-brain" workflow (37 nodes, Switch on `active_ai` → three RAG paths). Both **the deployable system** (Docker + React + Express) and **the methodology** (SDD + DEV_LOG + LESSON_LEARNED + WALKTHROUGH_N8N) are in this folder.
 
 **The upstream POC has zero real authentication and an SQL identifier-injection vulnerability** in `updateSettings`; we **disclosed but did not patch** (see [`SECURITY-CAVEATS.md`](SECURITY-CAVEATS.md)) because the vulnerabilities themselves are part of the Code2n8n teaching: "AI-written software that runs ≠ enterprise-deployable software."

@@ -2,6 +2,12 @@
 
 > 🌐 [English](INDEX.en.md) | **繁體中文**
 
+> ## v1.0 狀態 — Pre-v1.0 reference workflows
+>
+> 本目錄是 TigerAI 內部 workflow 庫精選的 **production-grade reference 樣本**（體現 4 個 enterprise pattern），**不屬於** v1.0 Path B 驗證 trio（轉換 → 資安驗證 → real-vendor-sandbox runtime）。要看 v1.0 Path B 完整跑通的案例請參考 [`examples/einvoice-n8n/`](../einvoice-n8n/)（v1.0 CLEARED milestone）。
+>
+> 詳見本目錄 [`README.md`](README.md)（English-first 簡介）+ 完整 claims/evidence 索引 [`docs/v1-claims-and-evidence.md`](../../docs/v1-claims-and-evidence.md)。
+
 > 從 TigerAI 內部 workflow 庫精選 3 個體現四大支柱的實戰 workflow，配 SDD 文件與重現步驟。
 > （與 MCP 無關；命名 `n8n-mcp-json` 只是上游資料夾的歷史名稱）
 > 與 `cookbook/`（教學用）不同：本目錄是**實戰級範例**，含 credential 模板、Worker 部署需求、SDD spec。

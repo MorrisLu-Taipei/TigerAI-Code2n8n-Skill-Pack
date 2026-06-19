@@ -2,6 +2,20 @@
 
 > 🌐 **English** | [繁體中文](README.md)
 
+> ## v1.0 status — Structural PASS · Runtime needs caller credentials
+>
+> | Aspect | Status |
+> | --- | --- |
+> | **Code2n8n path** | Path B: Netlify Functions + Supabase + GPT/Gemini → n8n runtime + approach-C admin UI |
+> | **Position in [4-case spectrum](../../CODE2N8N.md#the-4-case-spectrum-code2n8n-journeys-ship-in-this-pack)** | #2 of 4 |
+> | **Layer 1 V&V** (structural) | ✅ Static lint 0 err / 0 warn · n8n REST import 6/6 |
+> | **Layer 2 V&V** (runtime) | ⚠ Requires caller LINE + Supabase credentials — not validated end-to-end in Pack CI |
+> | **Upstream license** | MIT — [`scorpioliu0953/ai_customer_service`](https://github.com/scorpioliu0953/ai_customer_service) |
+> | **Pack-authored layer** | core + entry workflows + approach-C admin UI + cloud-version SDD spec |
+> | **Difference from v1.0 CLEARED case (einvoice)** | This case lacks **real-vendor-sandbox runtime evidence** (LINE Messaging API + Supabase require caller's own accounts); the 3rd leg of Path B (real-vendor-sandbox runtime PASS) is completed by the caller |
+> | **Difference from #3 LINE on-prem case** | This is the **cloud version** with structural-PASS security review; #3 is the **on-prem version** with security review disclosing major defects → DO NOT DEPLOY AS-IS |
+> | **Claims & evidence** | [v1-claims-and-evidence.md](../../docs/v1-claims-and-evidence.md) |
+
 An n8n port of the **backend webhook** from [scorpioliu0953/ai_customer_service](https://github.com/scorpioliu0953/ai_customer_service) (Netlify + React + Supabase + GPT/Gemini).
 
 The original is a LINE AI customer-service system: receive message → dedup → human-handoff keyword → call GPT or Gemini → reply, plus a React admin dashboard. This directory ports the **backend runtime path** to n8n workflows. The **frontend** — since n8n is not a web framework — is captured as a plan instead ([FRONTEND-SDD.md](FRONTEND-SDD.md), approach C: serve the UI from n8n itself), not yet built.

@@ -2,6 +2,19 @@
 
 > 🌐 **English** | [繁體中文](README.md)
 
+> ## v1.0 status — Structural PASS · Runtime needs caller credentials
+>
+> | Aspect | Status |
+> | --- | --- |
+> | **Code2n8n path** | Path B: 1,373-line Apps Script → core + entry n8n workflows (line-by-line `PROVENANCE.md`) |
+> | **Position in [4-case spectrum](../../CODE2N8N.md#the-4-case-spectrum-code2n8n-journeys-ship-in-this-pack)** | #1 of 4 |
+> | **Layer 1 V&V** (structural) | ✅ Static lint 0 err / 0 warn · n8n REST import 7/7 |
+> | **Layer 2 V&V** (runtime) | ⚠ Requires caller Google Workspace credentials — not validated end-to-end in Pack CI |
+> | **Upstream license** | MIT — [`mihozip/google-workspace-admin-project-workflow`](https://github.com/mihozip/google-workspace-admin-project-workflow) |
+> | **Pack-authored layer** | core + entry workflows + `PROVENANCE.md` line-by-line mapping + n8n REST import verification |
+> | **Difference from v1.0 CLEARED case (einvoice)** | This case lacks **real-vendor-sandbox runtime evidence** (GW API requires caller's own credentials); the 3rd leg of Path B (real-vendor-sandbox runtime PASS) is completed by the caller |
+> | **Claims & evidence** | [v1-claims-and-evidence.md](../../docs/v1-claims-and-evidence.md) |
+
 A complete n8n port of [mihozip/google-workspace-admin-project-workflow](https://github.com/mihozip/google-workspace-admin-project-workflow), originally written in Google Apps Script.
 
 The original is a semi-automatic "admin project initiator" for school administrators and educators: submit one form, and the system creates a project folder, project record Doc, task tracking Sheet, deliverable checklist, Calendar reminders, master control Sheet row, and a notification email. This directory reproduces that logic 1:1 in n8n.
