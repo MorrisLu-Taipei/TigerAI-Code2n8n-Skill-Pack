@@ -185,6 +185,21 @@ jobs:
           ignore-unfixed: true
           exit-code: '1'             # v0.37.0 SEC-018: HIGH/CRITICAL is a gate, not advisory
 
+  pack-self-scan-a2a:
+    name: 🐶 Pack self-scan — Pack's own docs vs A2A forbidden phrases (eat your own dog food)
+    runs-on: ubuntu-latest
+    # v1.0.1 SEC-019: advisory while we migrate existing docs from pre-§1.6 era.
+    # Becomes hard gate (continue-on-error: false) once docs/v1-claims-and-evidence.md
+    # migration completes — tracked in that doc's "migration progress" section.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run Pack self-scan against own A2A forbidden phrases
+        run: node scripts/self-scan-forbidden-phrases.mjs
+
   ext-dep-skill-enforcement:
     name: external-dependency-security Skill auto-enforcement (v0.39.0)
     runs-on: ubuntu-latest

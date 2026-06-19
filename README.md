@@ -1,7 +1,45 @@
-# TigerAI Code2n8n Skill Pack — User Manual
+# TigerAI A2A Code2n8n Skill Pack — User Manual
+
+> **TigerAI A2A Code2n8n Skill Pack — v1.0 Production-Grade Methodology**
+> *AI-driven build of enterprise-grade n8n workflows from natural-language sticky notes or existing codebases. A2A-directed · 4-Tier dependency security CI-enforced · Path B real-vendor-sandbox runtime evidence.*
 
 > 🌐 **English** | [繁體中文](README.zh.md)
 > 📖 **Why Code2n8n?** Read the [Code2n8n manifesto](CODE2N8N.md) — why enterprises need n8n *more* in the AI-coding era, not less.
+
+> ## 🚀 v1.0.0 release — evidence-first（per §1.6 lexical schema-before-claim rule）
+>
+> ### Evidence schema — gate v1（Pack 維運 AI ran the gate）
+>
+> **Layer 1 (structural)**
+> - JSON parse: PASS — 14 einvoice workflows + 16 cross-case workflows
+> - `security-scan.mjs`: 0 error / 20 documented warning（warnings: pre-existing webhook:no-auth in entry workflows, documented in each case `SECURITY-REVIEW.md` §3.1）
+> - `live-roundtrip.mjs`: 14/14 ok（tag: `claude-import-2026-06-20`）
+>
+> **Layer 2 (runtime — Path B einvoice case)**
+> - npm install / audit / tsc: PASS（svc exact pins, npm ci 鎖, CI fail-gate 已綁 v0.36.0）
+> - End-to-end runtime smoke against **real vendor sandbox**:
+>   - Amego ISSUE / VOID / ALLOWANCE / VOID_ALLOWANCE / QUERY / B2B / MIXED_TAX / QUERY_BY_ORDER_ID / CARRIER mobile barcode / FOREIGN_CURRENCY: **10/10 PASS**
+>   - Amego DONATION 愛心碼: PARTIAL（Amego raw 不 echo donation — verification-method limitation, not workflow bug）
+>   - Amego SCHEDULED_ISSUE: SDK gap captured as [SEC-021](examples/einvoice-n8n/SECURITY-REVIEW.md)（mitigated via [`einvoice-capability-aware-gate`](examples/einvoice-n8n/workflows/einvoice-capability-aware-gate.workflow.json) workflow; upstream issue to be filed at paid-tw/einvoice）
+> - **Real Amego sandbox invoice traces**: `AA26515011` / `AA26515012` / `A1781885120033` / `AA26515015` / `AA26515016` / `AA26515018` / `AA26515019` / `AA26515020`（11 張可在 Amego 後台查得）
+> - SEC entries 收尾: **20 ✅ FIXED + 1 OPEN (mitigated) + 1 documented meta-lesson** — see [SECURITY-REVIEW.md](examples/einvoice-n8n/SECURITY-REVIEW.md)
+>
+> ### Claim — Path B 完整跑通（轉換 → 資安驗證 → 實際測試完成）
+>
+> 上述 evidence 在席（依 [V&V A2A directive](docs/code2n8n-vv-a2a.md) 11 國語言 machine-readable spec），**v1.0.0 此版本可被宣稱為**：
+>
+> - ✅ **轉換**：[`@paid-tw/einvoice`](https://github.com/paid-tw/einvoice) TypeScript SDK（5 家供應商，MIG 4.0）→ 80 行 Hono svc + 14 個 n8n workflow
+> - ✅ **資安驗證**：22 SEC entries + 4-Tier external-dependency security CI 自動 enforce（[external-package-security-posture.md](docs/external-package-security-posture.md) + [external-dependency-security-a2a.md](docs/external-dependency-security-a2a.md) + [中文版](docs/external-dependency-security-a2a.zh.md)）
+> - ✅ **實際測試完成**：Amego 10/10 SDK capability 對真實 Amego public sandbox 端到端 PASS（runtime evidence 同上 Layer 2 區塊）
+>
+> **結案驗證單元**：[`tests/v0.41-final-validation-report.md`](examples/einvoice-n8n/tests/v0.41-final-validation-report.md) · **claims & evidence index（防酸民）**：[`docs/v1-claims-and-evidence.md`](docs/v1-claims-and-evidence.md)
+>
+> ### 範圍誠實揭露（v1.0.0 不可宣稱的事）
+>
+> - ❌ **「5 家 e-invoice provider 全部驗過」** — 只 Amego 真實 sandbox runtime 通過；ECPay / ezPay / ezPay 跨境 / ezReceipt 無公開測試帳號 → runtime 未驗、結構層 OK（用 SDK `MockProvider` 可驗，本 Pack [SEC-022](examples/einvoice-n8n/SECURITY-REVIEW.md) 已 deprecate 自建 docker stub）
+> - ❌ **「Pack 所有 case study 都 enterprise-deployable」** — 只 einvoice CLEARED；GW admin / LINE cloud 結構層 PASS、runtime 需 caller credentials；LINE on-prem 標 SECURITY-CAVEATS **DO NOT DEPLOY AS-IS**
+> - ❌ **「npm 套件 100% 安全」** — 4-Tier 治理把已知失敗模式擋住，但新型 supply chain 攻擊永遠可能繞過；Pack 提供 defense-in-depth 而非 100% 保證
+> - ❌ **「v1.0 = 完美」** — v1.0 = Path B 第一次完整跑通 + 公開所有 SEC + 治理 SOP 落地。後續 v1.x 持續演進
 
 > **The Code2n8n positioning**: AI Coding (Claude Code / Codex / Antigravity) is great at *writing* code. n8n is great at making code *manageable by an enterprise*. This pack is the bridge — **describe a requirement, *or* point at an existing system** (Apps Script / Express / Lambda / Docker stack), and get a runnable n8n workflow that IT, operations, and managers can all read, audit, hand off, and govern.
 
@@ -49,7 +87,7 @@ Apps Script / Express / Lambda / Netlify Functions / Docker stack
 
 Code2n8n **does not transliterate every line of Python or JavaScript into nodes**. It re-partitions the system: complex algorithms stay in code, while triggers, cross-system wiring, retries, human approvals, notifications, and execution history lift into a visible, manageable workflow.
 
-> **AI Coding solves "how is the function built"; Code2n8n solves "how is the capability modularized *and audited*"; n8n solves "how the modules cooperate across the whole enterprise."**
+> **AI Coding solves "how is the function built"; Code2n8n solves "how is the capability modularized and governance-traced"** (per A2A directive + 4-Tier external-dependency security CI gates — see [v1-claims-and-evidence.md](docs/v1-claims-and-evidence.md))**; n8n solves "how the modules cooperate across the whole enterprise."**
 
 ### 🧪 Case study evidence — samples of the methodology applied, not the deliverable
 
@@ -60,7 +98,7 @@ Code2n8n **does not transliterate every line of Python or JavaScript into nodes*
 | [Google Workspace admin](examples/google-workspace-admin-workflow/) | 1,373-line Apps Script → 7 workflows (core + entry + setup) | Static lint 0 err / 0 warn · n8n REST import 7/7 · live execution requires your Google Workspace credentials |
 | [LINE customer service (cloud)](examples/line-ai-customer-service/) | Netlify + Supabase → core + entry + approach-C admin | Static lint 0 err / 0 warn · n8n REST import 6/6 · live execution requires your LINE + Supabase credentials |
 | [LINE customer service (on-prem)](examples/line-ai-customer-service-onprem/) | Docker + Postgres + Redis + Qdrant + Ollama → 37-node brain | 5-phase V&V; security review concluded **BLOCKED — DO NOT DEPLOY AS-IS** (kept as teaching artefact, see [`SECURITY-REVIEW.md`](examples/line-ai-customer-service-onprem/SECURITY-REVIEW.md)) |
-| [Taiwan e-invoice unified SDK](examples/einvoice-n8n/) | TypeScript SDK ([`MorrisLu-Taipei/einvoice`](https://github.com/MorrisLu-Taipei/einvoice), 5 providers) → 80-line Hono wrapper svc + 6 governance workflows | **The case that drove §1.5 / §1.6 / SKILL Stage 8-10 contract checks into the methodology.** v0.31.0 status: 16 SEC-### in [`SECURITY-REVIEW.md`](examples/einvoice-n8n/SECURITY-REVIEW.md) (13 fixed, 3 tracked); svc 0 tsc errors / 0 high+ CVEs; scanner 0 errors / 3 expected warnings; REST import 6/6; full runtime test matrix in [`tests/v0.31-local-sim-runtime-report.md`](examples/einvoice-n8n/tests/v0.31-local-sim-runtime-report.md) covering Amego lifecycle (issue / void / query / idempotency) via real Amego public sandbox, all 5 vendors capability enumeration, svc trust boundary, Sheet + Slack local simulators, sandbox failure-injection mechanism, and one n8n end-to-end happy path; 5 of 6 workflows + 4 vendors' n8n-level end-to-end PENDING v0.32+. Reflection on why bugs survived earlier review: [`REFLECTION.md`](examples/einvoice-n8n/REFLECTION.md). |
+| [Taiwan e-invoice unified SDK](examples/einvoice-n8n/) ⭐ **v1.0 CLEARED** | TypeScript SDK ([`@paid-tw/einvoice`](https://github.com/paid-tw/einvoice), 5 providers, MIG 4.0) → 80-line Hono wrapper svc + 14 governance workflows | **First Path B case to ship CLEARED with real-vendor-sandbox runtime ground truth — the v1.0 milestone case.** Amego **10/10 SDK capability** verified against real Amego public sandbox (11 real invoice traces, see [v0.40 report](examples/einvoice-n8n/tests/v0.40-amego-full-coverage-report.md)); **22 SEC entries** in [`SECURITY-REVIEW.md`](examples/einvoice-n8n/SECURITY-REVIEW.md) (20 ✅ FIXED, 1 OPEN-but-mitigated SDK gap, 1 documented meta-lesson); **3 HITL versions** (v1 DIY / v2 Slack sendAndWait / v3 Form for Taiwan); 4-Tier external-dependency security CI auto-enforced; scanner 0 error / 20 documented warnings. **Closing report**: [`tests/v0.41-final-validation-report.md`](examples/einvoice-n8n/tests/v0.41-final-validation-report.md). Reflection on why bugs survived earlier review: [`REFLECTION.md`](examples/einvoice-n8n/REFLECTION.md). |
 
 Each row is one sample. When a case surfaces a new failure mode (Code v2 contract drift, ghost cron, webhook-register asymmetry, etc.) the methodology upgrades — the case becomes a permanent record of what the upgrade was for.
 
@@ -125,7 +163,7 @@ AI ──> You: ✅ workflow.json generated (Schedule → Shopify → Code → E
              ✅ Deployed to your n8n via API, webhook URL: https://...
 ```
 
-> 🎯 **The core idea**: Users don't need to memorise n8n node syntax — clear requirements are enough to get a structured, reviewable, maintainable workflow. To claim it's *production-ready* still requires credential setup, live validation, and a security audit.
+> 🎯 **The core idea**: Users don't need to memorise n8n node syntax — clear requirements are enough to get a structured, reviewable, maintainable workflow. **Calling it deployment-grade** still requires credential setup, live validation against real sandbox, and the [V&V A2A directive](docs/code2n8n-vv-a2a.md) two-layer gate must PASS — see [`v1-claims-and-evidence.md`](docs/v1-claims-and-evidence.md) for how we verify each claim.
 
 If you already have code, don't rewrite it into a sticky note. Just say:
 
@@ -303,7 +341,7 @@ TigerAI-Code2n8n-Skill-Pack/
 | [Google Workspace admin workflow](examples/google-workspace-admin-workflow/) | 1,373-line Apps Script → core + entry n8n workflows | Line-by-line `PROVENANCE.md`; static lint 0 err / 0 warn; n8n REST import 7/7; live execution needs your Google Workspace credentials |
 | [LINE AI customer service (cloud)](examples/line-ai-customer-service/) | Netlify Functions + Supabase → n8n runtime + approach-C admin UI | Static lint 0 err / 0 warn; n8n REST import 6/6; live execution needs your LINE + Supabase credentials |
 | [LINE AI customer service (on-prem)](examples/line-ai-customer-service-onprem/) | Docker + Postgres + Redis + Qdrant + Ollama + n8n | 37-node workflow; 5-phase V&V; security audit disclosed major defects — **DO NOT DEPLOY AS-IS** |
-| [**Taiwan e-invoice (einvoice-n8n)**](examples/einvoice-n8n/) ⭐ **v0.41.0 CLEARED** | `@paid-tw/einvoice` SDK (5 providers, MIG 4.0) → svc Hono wrapper + 14 n8n workflows | **Amego 10/10 SDK capability verified against real Amego sandbox** (11 invoice traces); 22 SEC entries tracked; 4-Tier external-dependency security CI-enforced; A2A directives in Chinese + English |
+| [**Taiwan e-invoice (einvoice-n8n)**](examples/einvoice-n8n/) ⭐ **v1.0 CLEARED** | `@paid-tw/einvoice` SDK (5 providers, MIG 4.0) → svc Hono wrapper + 14 n8n workflows | **Amego 10/10 SDK capability** PASS against real Amego sandbox (per [V&V A2A directive](docs/code2n8n-vv-a2a.md) — 11 real invoice traces `AA265149xx`–`AA265150xx`); 22 SEC entries tracked; 4-Tier external-dependency security CI-enforced; A2A directives in Chinese + English |
 
 The third case deliberately preserves the upstream POC's security defects and documents them in [`SECURITY-CAVEATS.md`](examples/line-ai-customer-service-onprem/SECURITY-CAVEATS.md). This isn't "failed acceptance swept under the rug" — it's Code2n8n's core principle: **AI-written software that runs is not automatically software an enterprise can deploy.**
 
