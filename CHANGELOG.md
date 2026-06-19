@@ -1,5 +1,39 @@
 # Changelog
 
+## v0.30.1 — Sandbox build directive 寫進 SKILL Stage 8（pattern 推上，實作本地留）
+
+實作層：本地建好 5 家 vendor HTTP simulator（`examples/einvoice-n8n/sandbox/`）— Hono + AES + 8 種錯誤注入 + 5 sub-router，跑通 Amego 全鏈 smoke。**但 sandbox 本身不推 GitHub**（操作者特定 scaffolding，`.git/info/exclude` 鎖死）；推上的只有「pattern 怎麼用」。
+
+### 🆕 SKILL Stage 8 加入 sandbox build directive
+
+[`skills/tigerai/code2n8n-pipeline/SKILL.md`](skills/tigerai/code2n8n-pipeline/SKILL.md) Stage 8 增補：
+
+> 若包進來的 SDK / API **沒有公開 sandbox**（或 sandbox 需綁信用卡 / 真實 credentials），main agent **必須**建本地 vendor HTTP simulator：
+> - 落腳 `<case-dir>/sandbox/`
+> - Hono / 同等輕量 service，5 sub-router 一家一個
+> - 必含失敗注入、idempotency、in-memory persistence
+> - 透過 `*_BASE_URL` env 讓 svc 不感知
+> - 加進 `.git/info/exclude` — 不推 GitHub
+>
+> Critic gate 加強：SDK 無公開 sandbox 但 main 沒建 simulator → VETO 回 Stage 8。
+
+未來所有 Code2n8n 案例遇到「沒公開 sandbox」的 SDK 都會自動套用此 pattern。
+
+### 🩹 [`examples/einvoice-n8n/SECURITY-REVIEW.md`](examples/einvoice-n8n/SECURITY-REVIEW.md) 加 §6.5
+
+文件化「本地 sandbox 存在 + 為何不推」+ SEC-011 / SEC-012 / SEC-013 的 status update 段落 — 說明這三條從程式碼審查層面已 ✅ FIXED，**並標出本地 sandbox 跑完整 end-to-end 該怎麼產出 evidence**。Operator 跑完本地 sandbox 的 evidence 留 local（含 operator-specific 識別字），Pack 推上的是「為何 evidence 可以這樣產」。
+
+### 為什麼這樣分（推 pattern、不推實作）
+
+Sandbox 實作含：
+- Vendor-published 測試密鑰（雖然公開但屬於每家 vendor 的測試政策變動範圍）
+- Operator 想注入的特定錯誤 / 持久化 / 測試資料形狀（人人不同）
+- 跑完的 evidence log（embed operator-specific identifier）
+
+把這些推 GitHub 會：(a) 變成所有 fork 都帶測試密鑰、(b) 把一個人的 sandbox 風格鎖死成 Pack 的「正確答案」。**推 pattern + 留實作給 operator** 是健康分界。
+
+---
+
 ## v0.30.0 — 新 SKILL：`code2n8n-pipeline`（Path B 自動駕駛 / main-critic 雙 agent）
 
 把 Code2n8n Path B 從「使用者帶著 AI 跑」升級為「丟 GitHub repo → AI 自己跑完 12 階段 → 出完工報告」的 auto-pilot SKILL。**不是執行案子**，是寫**規格**讓未來案子進來時 AI 自動啟動本 SKILL。

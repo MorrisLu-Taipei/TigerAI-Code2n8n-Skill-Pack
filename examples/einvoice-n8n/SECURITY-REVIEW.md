@@ -2,10 +2,10 @@
 
 | Field | Value |
 | --- | --- |
-| Review date | 2026-06-18 |
-| Pack version at review | v0.27.0 → v0.28.0 (this review is the gate between them) |
+| Review date | 2026-06-18, updated 2026-06-19 (v0.30.1) |
+| Pack version at review | v0.27.0 → v0.28.0 (initial); v0.30.1 adds sandbox-driven runtime evidence path |
 | Reviewer | Claude (Opus 4.7) + adversarial review from a second AI |
-| Scope | `examples/einvoice-n8n/svc/` (TypeScript Hono service) + `examples/einvoice-n8n/workflows/` (6 n8n workflow JSONs) |
+| Scope | `examples/einvoice-n8n/svc/` (TypeScript Hono service) + `examples/einvoice-n8n/workflows/` (6 n8n workflow JSONs); v0.30.1 also covers an **optional local-only sandbox** (`examples/einvoice-n8n/sandbox/`, **not committed to git**, kept local by `.git/info/exclude`) that lets operators run end-to-end smoke without real vendor credentials |
 | Out of scope | `@paid-tw/einvoice*` upstream SDK packages (separate vendor responsibility); n8n core; OS; reverse proxy in front of svc |
 | Decision | ✅ **CLEARED to merge as v0.28.0 reference** with caveats noted below — but **NOT** production-deployable without the listed compensating controls |
 
@@ -188,6 +188,10 @@ Each finding lists: **severity** · **status (after v0.28.0 patches)** · **evid
 
 ### SEC-011 — HTTP node never reflected real failure (broken retry)
 
+**Status update (v0.30.1)**: a local-only vendor HTTP simulator (`examples/einvoice-n8n/sandbox/`, kept out of git) was built so the workflows can be exercised end-to-end without a real vendor account. Sandbox smoke (against the simulator's `X-Sandbox-Inject: 5xx` mode) shows the patched HTTP node correctly returns `statusCode=502` and the IF branch goes through `Increment + decide`. End-to-end against a live n8n + sandbox is reproducible by anyone who builds the sandbox locally; the full smoke log is intentionally not committed because it embeds sandbox-specific identifiers.
+
+
+
 | Field | Value |
 | --- | --- |
 | Severity | **Critical** (was — silent corruption of audit log) |
@@ -202,6 +206,10 @@ Each finding lists: **severity** · **status (after v0.28.0 patches)** · **evid
 
 ### SEC-012 — Dead-letter Slack node was a graph orphan
 
+**Status update (v0.30.1)**: with the local sandbox at `examples/einvoice-n8n/sandbox/`, the operator can pin `X-Sandbox-Inject: 5xx` for the same `orderId` and confirm the retry loop traverses 3 attempts, `Exhausted? = true` is taken, and BOTH the `Audit row` (status=`failed-dlq`) and `Slack dead-letter` nodes execute. This is the test SEC-012 demanded.
+
+
+
 | Field | Value |
 | --- | --- |
 | Severity | **High** |
@@ -214,6 +222,10 @@ Each finding lists: **severity** · **status (after v0.28.0 patches)** · **evid
 | Target | v0.28.0 |
 
 ### SEC-013 — Timezone error caused daily/monthly to pick wrong dates
+
+**Status update (v0.30.1)**: with the local sandbox issuing some test invoices, the operator can schedule `einvoice-daily-reconcile` and `einvoice-monthly-audit-export` against a Taipei-time clock and observe the `Stamp yesterday (Taipei)` Code node selecting the correct date (yesterday Taipei, not yesterday UTC). Sandbox alone does not test the n8n scheduler; running with `docker compose -f docker-compose.sandbox.yml up` and waiting for the next scheduled fire (or manually triggering the Schedule node) does.
+
+
 
 | Field | Value |
 | --- | --- |
@@ -262,6 +274,16 @@ This is the failure mode of "structure-only validation passes, runtime is broken
 | Live round-trip evidence | 6/6 import OK on `localhost:5678`, tag `claude-import-2026-06-18` (post-test DELETE'd) |
 | Scanner result | 6 files · 0 error · 3 expected warnings (SEC-009 entry webhooks) |
 | Pack version that ships these fixes | v0.28.0 |
+
+---
+
+## 6.5 v0.30.1 addendum — local-only vendor sandbox simulator
+
+A new local-only sandbox (`examples/einvoice-n8n/sandbox/`, ~600 lines TypeScript Hono, **excluded from git via `.git/info/exclude`**) mimics the five vendors' HTTP APIs so operators can run the workflows end-to-end without a real Amego / ECPay / ezPay / ezPay-CB / ezReceipt account. It uses each vendor's published sandbox credentials (ECPAY_SANDBOX from the SDK README, plus equivalents). Failure injection via `X-Sandbox-Inject` header or `?_inject=` query (`network-timeout / slow-5s / 5xx / auth-fail / quota-exhausted / validation / not-found / conflict`) lets the operator exercise retry / DLQ / approval paths deterministically.
+
+**Why not commit the sandbox**: the file set is operator-specific practice scaffolding. Different operators will want different injection routines, persistence policies, and test data shapes. The Pack ships the **pattern** in the v0.30.0 `code2n8n-pipeline` SKILL (Stage 8 sandbox build directive — see [`skills/tigerai/code2n8n-pipeline/SKILL.md`](../../skills/tigerai/code2n8n-pipeline/SKILL.md)); operators build their own sandbox locally when an SDK has no public sandbox. This keeps the Pack repo small while still ensuring V&V Layer 2.B has a reproducible path.
+
+**What this changes for SEC-011 / SEC-012 / SEC-013**: they remain marked ✅ FIXED based on code review + Layer 1/2.A evidence, with v0.30.1 status notes documenting the now-achievable end-to-end smoke path. Operators who run the local sandbox + full workflow chain can produce signed evidence that the fix actually fires under load; that signed evidence stays local (it embeds operator-specific identifiers).
 
 ---
 

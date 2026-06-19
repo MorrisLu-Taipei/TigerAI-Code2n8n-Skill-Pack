@@ -182,6 +182,14 @@ description: End-to-end Code2n8n Path B auto-pilot. Auto-activates when the user
 - **Main 動作**：起 svc → curl `/healthz` → 未認證 `/v1/*` 期待 401 → 過大 body 期待 413 → prototype-pollution payload 期待 400 → unknown enum 期待 400。
 - **Artefact**：`tests/vv-layer2-b.md`（每個 curl 的 status code + 截錄 response）。
 - **Critic gate**：4 個負面測試全綠。
+- **🆕 v0.30.1 — Sandbox build directive**：若包進來的 SDK / API **沒有公開 sandbox**（或 sandbox 需要綁信用卡 / 真實 credentials），main agent **必須**為它建一個**本地 vendor HTTP simulator**：
+    - 落腳處：`<case-dir>/sandbox/`
+    - 結構：單一 Hono / 同等輕量 service，5 個 sub-router 一家供應商一個（或對等的 API surface）
+    - 必含：失敗注入機制（network-timeout / 5xx / auth-fail / quota / not-found / conflict 等）、idempotency、in-memory persistence
+    - 透過 `*_BASE_URL` env var 讓 svc / SDK 完全不感知是 sandbox
+    - **加進 `.git/info/exclude`**：sandbox 本身**不推上 GitHub**（操作者特定的測試 scaffolding），但 SECURITY-REVIEW.md 註明「local sandbox 可建」+ build directive 在本 SKILL 中
+    - 參考實作：[`examples/einvoice-n8n/sandbox/`](../../../examples/einvoice-n8n/sandbox/)（local-only，不在 repo）— 模式記錄於 SECURITY-REVIEW §6.5
+- **Critic gate（加強）**：若 SDK 無公開 sandbox 但 main 沒建本地 simulator → VETO，回到 Stage 8。
 
 ### Stage 9 — V&V Layer 2.C + 2.D（workflow runtime contract + cross-document parity）
 
