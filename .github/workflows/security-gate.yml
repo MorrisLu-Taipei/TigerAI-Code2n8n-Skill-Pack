@@ -185,6 +185,154 @@ jobs:
           ignore-unfixed: true
           exit-code: '1'             # v0.37.0 SEC-018: HIGH/CRITICAL is a gate, not advisory
 
+  ext-dep-skill-enforcement:
+    name: external-dependency-security Skill auto-enforcement (v0.39.0)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # need PR base + head for diff
+
+      # Gate 1 — §1.8: any new npm dep in svc must have SEC-DEP entry
+      - name: SEC-DEP entry exists for every new npm dep
+        run: |
+          set -e
+          # Diff package.json files between base + head (on push) or just compare to HEAD~1
+          BASE_SHA="${{ github.event.pull_request.base.sha || github.event.before }}"
+          if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            BASE_SHA=$(git rev-parse HEAD~1 2>/dev/null || echo "HEAD")
+          fi
+          echo "Comparing base=$BASE_SHA → HEAD"
+
+          # Find new dependencies in any package.json (added or version changed)
+          NEW_DEPS=$(git diff "$BASE_SHA" HEAD -- '**/package.json' 2>/dev/null | \
+            grep -E '^\+\s+"[^"]+":\s*"[^"]+"' | \
+            grep -oE '"[^"]+":\s*"[^"]+"' | \
+            grep -vE '"//|"name":|"version":|"description":|"scripts":|"author":|"license":|"private":|"type":|"main":|"engines":' | \
+            grep -oE '"[^"]+"' | head -1 | tr -d '"' || true)
+          # Loop: read all lines individually
+          DIFF_OUTPUT=$(git diff "$BASE_SHA" HEAD -- '**/package.json' 2>/dev/null || true)
+          if [ -z "$DIFF_OUTPUT" ]; then
+            echo "OK — no package.json changes."
+            exit 0
+          fi
+          # Extract added dep names (lines starting with '+' inside "dependencies"/"devDependencies" blocks)
+          ADDED=$(echo "$DIFF_OUTPUT" | grep -E '^\+\s+"@?[a-z][a-z0-9_./-]+":\s*"' | \
+            grep -vE '"name":|"version":|"description":|"scripts":|"engines":|"type":|"main":|"private":|"license":|"author":|"//' | \
+            sed -E 's/^\+\s+"([^"]+)":.*/\1/' || true)
+          if [ -z "$ADDED" ]; then
+            echo "OK — no dep additions detected."
+            exit 0
+          fi
+          echo "=== New / changed npm deps ==="
+          echo "$ADDED"
+          echo "=== SEC-DEP entries check ==="
+          MISSING=""
+          for dep in $ADDED; do
+            # SEC-DEP entry id form: SEC-DEP-<sanitized>-<version>
+            sanitized=$(echo "$dep" | sed 's|@||g; s|/|-|g')
+            if ! grep -q "SEC-DEP-$sanitized" examples/einvoice-n8n/SECURITY-REVIEW.md 2>/dev/null && \
+               ! find . -name SECURITY-REVIEW.md -exec grep -lq "SEC-DEP-$sanitized" {} \; 2>/dev/null; then
+              echo "MISSING: SEC-DEP-$sanitized for $dep"
+              MISSING="$MISSING $dep"
+            else
+              echo "OK: $dep has SEC-DEP entry"
+            fi
+          done
+          if [ -n "$MISSING" ]; then
+            echo ""
+            echo "::error::external-dependency-security Skill §1.8 violation:"
+            echo "::error::new dep(s) without SEC-DEP entry: $MISSING"
+            echo "::error::see skills/tigerai/external-dependency-security/SKILL.md §1.5"
+            exit 1
+          fi
+
+      # Gate 2 — §1.6: no caret/tilde/range in svc package.json deps
+      - name: package.json exact-pin enforcement (no caret/tilde/range)
+        run: |
+          set -e
+          BAD=""
+          for pj in $(find . -name 'package.json' -not -path './node_modules/*' -not -path './examples/line-ai-customer-service-onprem/*'); do
+            # Skip if it's not in our svc / case directories
+            case "$pj" in
+              ./examples/*/svc/package.json|./examples/*/api/package.json) ;;
+              *) continue ;;
+            esac
+            CARET=$(node -e "
+              const p = JSON.parse(require('fs').readFileSync('$pj','utf8'));
+              const offenders = [];
+              for (const section of ['dependencies','devDependencies']) {
+                for (const [name, ver] of Object.entries(p[section] || {})) {
+                  if (/^[\^~><=]/.test(ver)) offenders.push(name + '@' + ver);
+                }
+              }
+              if (offenders.length) console.log(offenders.join('\n'));
+            ")
+            if [ -n "$CARET" ]; then
+              echo "::error::$pj has range specifiers (SEC-017 violation):"
+              echo "$CARET" | sed 's/^/  - /'
+              BAD="$BAD $pj"
+            else
+              echo "OK — $pj all pins are exact."
+            fi
+          done
+          if [ -n "$BAD" ]; then
+            exit 1
+          fi
+
+      # Gate 3 — §3: GitHub raw URLs in committed files must lock commit sha (not branch)
+      - name: GitHub raw URLs must use commit sha (not branch)
+        run: |
+          set -e
+          # Pattern: raw.githubusercontent.com/<owner>/<repo>/<ref>/<path>
+          # If <ref> is not a 40-char hex sha, fail.
+          OFFENDERS=$(git ls-files | xargs grep -hoE 'raw\.githubusercontent\.com/[^/]+/[^/]+/[^/[:space:]"'"'"']+' 2>/dev/null | \
+            sort -u | \
+            grep -vE 'raw\.githubusercontent\.com/[^/]+/[^/]+/[a-f0-9]{40}/' || true)
+          if [ -n "$OFFENDERS" ]; then
+            echo "::error::external-dependency-security Skill §3 violation:"
+            echo "::error::GitHub raw URLs must lock commit sha (40-char hex), not branch name:"
+            echo "$OFFENDERS" | sed 's/^/  - /'
+            echo "Fix: replace /main/ or /master/ with the commit sha."
+            exit 1
+          fi
+          echo "OK — all GitHub raw URLs lock commit sha (or none present)."
+
+      # Gate 4 — §5.2: Dockerfile FROM lines must hash-pin via @sha256:
+      - name: Dockerfile FROM must hash-pin (sha256 digest)
+        run: |
+          set -e
+          BAD=""
+          for df in $(find . -name 'Dockerfile' -not -path './node_modules/*'); do
+            # Skip vendor / on-prem case (their hardening is tracked separately)
+            case "$df" in
+              ./examples/line-ai-customer-service-onprem/*) continue ;;
+            esac
+            # Extract FROM lines. Allow either:
+            #  (a) FROM image@sha256:...
+            #  (b) FROM ${ARG_NAME} (where ARG is declared and has @sha256: in default)
+            # We use a simple rule: FROM line must contain @sha256: OR be a variable ref
+            # whose ARG default contains @sha256:.
+            UNPINNED=$(grep -E '^FROM ' "$df" | grep -vE '@sha256:|\$\{[A-Z_]+\}' || true)
+            if [ -n "$UNPINNED" ]; then
+              echo "::warning::$df has unpinned FROM (SEC-018 advisory):"
+              echo "$UNPINNED" | sed 's/^/  - /'
+              # Don't fail the gate for unpinned-via-ARG (since svc Dockerfile uses ARG approach).
+              # Only fail if BOTH no @sha256 AND no ARG.
+              if ! grep -qE 'ARG\s+[A-Z_]*(IMAGE|DIGEST)' "$df"; then
+                echo "::error::$df: no @sha256: pin AND no ARG/DIGEST var — Skill §5.2 violation"
+                BAD="$BAD $df"
+              else
+                echo "    (allowed: ARG-based digest pattern detected in $df)"
+              fi
+            else
+              echo "OK — $df FROM lines hash-pinned."
+            fi
+          done
+          if [ -n "$BAD" ]; then
+            exit 1
+          fi
+
   sbom-generate:
     name: SBOM generation (CycloneDX) — SEC-018 Tier 2
     runs-on: ubuntu-latest

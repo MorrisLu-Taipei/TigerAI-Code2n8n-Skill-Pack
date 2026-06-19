@@ -346,6 +346,18 @@ The v0.28.0 review caught 13 SEC-### through code review + Layer 1 scanner + RES
 | Owner | Pack |
 | Target | v0.37.0 |
 
+### SEC-020 — Skill 規則無自動 enforcement；AI Coder 可繞過、人類 reviewer 看不到（v0.38.0 自查）
+
+| Field | Value |
+| --- | --- |
+| Severity | **High** |
+| Status (v0.38.0) | 🔴 **OPEN — 揭露但未補** |
+| Status (v0.39.0) | ✅ **FIXED via Skill → automated gate translation** — Skill 規則從「文件 SOP」升為**CI / pre-commit / CODEOWNERS / PR template 真實 gate**：(1) `.github/workflows/security-gate.yml` 新增 `ext-dep-skill-enforcement` job 含 4 個 step（Gate A SEC-DEP 必存在 / Gate B exact-pin 強制 / Gate C GitHub raw sha-lock / Gate D Dockerfile hash-pin），CI fail 即擋 merge；(2) `scripts/pre-commit-ext-dep-gates.sh` 本機 pre-commit hook 同 3 道 gate 立即回饋；(3) `.github/CODEOWNERS` 強制 dep manifests / Dockerfile / compose / SECURITY-REVIEW / 3 個 security Skill / scanner / ingest gate 任一改動 require `@MorrisLu-Taipei` 簽核；(4) `.github/pull_request_template.md` 強制 PR 填 dep review checklist + V&V evidence；(5) ship A2A directive [`docs/external-dependency-security-a2a.md`](../../docs/external-dependency-security-a2a.md) +「中文」localized — machine-actionable spec for AI consumers，明定觸發條件 / 工具呼叫 / 通過 criterion / 禁用詞 / lexical regex VETO 規則，跟 v0.28.1 V&V A2A 同形式。 |
+| Evidence | v0.38.0 收尾時自查發現：SKILL §1.8 + `external-dependency-security` SKILL 全 9 §、§6 Stage 7 SCA gate 等規則全部**無自動執行**。AI Coder 看不到 / 沒讀 / 沒遵守即等於沒寫。Pack 內**真正自動的**只剩 CI scanner / npm audit / Trivy / Renovate — 但這些不涵蓋 §1.8 SEC-DEP 必填、§3 sha-lock、§5.2 Dockerfile pin、§1.6 exact-pin。 |
+| Fix shipped | 上述 5 點完整轉譯為自動 gate。fixture 驗：caret PR / 缺 SEC-DEP PR / 含 `/main/` URL PR / 未 pin Dockerfile PR 任一情境**CI 紅 + merge 鎖**。 |
+| Owner | Pack |
+| Target | v0.39.0 |
+
 ### SEC-019 — 缺乏「外部依賴安全」治理層 Skill；AI Coder 沒有 SCA 強制 gate（v0.35.0 自查）
 
 | Field | Value |

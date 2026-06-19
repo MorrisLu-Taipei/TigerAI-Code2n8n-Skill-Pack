@@ -1,0 +1,36 @@
+# v0.39.0 SEC-019 — CODEOWNERS for external-dependency-security Skill enforcement
+#
+# Files matching these patterns REQUIRE the listed owner to review the PR.
+# GitHub auto-requests review from listed owners on PR open.
+# Combined with branch protection rule "Require review from CODEOWNERS",
+# these PRs cannot merge without the named human approving.
+
+# 🔒 Dependency manifests — every change goes through reviewer
+**/package.json                                @MorrisLu-Taipei
+**/package-lock.json                           @MorrisLu-Taipei
+**/pnpm-lock.yaml                              @MorrisLu-Taipei
+**/yarn.lock                                   @MorrisLu-Taipei
+
+# 🔒 Container build / runtime files
+**/Dockerfile                                  @MorrisLu-Taipei
+**/docker-compose*.yml                         @MorrisLu-Taipei
+**/docker-compose*.yaml                        @MorrisLu-Taipei
+
+# 🔒 CI / security gates themselves — protect against gate-removal PRs
+.github/workflows/                             @MorrisLu-Taipei
+.github/renovate.json                          @MorrisLu-Taipei
+.github/CODEOWNERS                             @MorrisLu-Taipei
+
+# 🔒 SECURITY-REVIEW + SEC-DEP entries
+**/SECURITY-REVIEW.md                          @MorrisLu-Taipei
+docs/external-package-security-posture.md      @MorrisLu-Taipei
+
+# 🔒 Skill files governing security
+skills/tigerai/n8n-security-governance/        @MorrisLu-Taipei
+skills/tigerai/external-dependency-security/   @MorrisLu-Taipei
+skills/tigerai/code2n8n-pipeline/SKILL.md      @MorrisLu-Taipei
+
+# 🔒 Security scanner + ingest gate themselves
+scripts/security-scan.mjs                      @MorrisLu-Taipei
+scripts/ingest-external-workflow.mjs           @MorrisLu-Taipei
+scripts/pre-commit-ext-dep-gates.sh            @MorrisLu-Taipei

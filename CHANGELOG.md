@@ -1,5 +1,87 @@
 # Changelog
 
+## v0.39.0 — Skill 規則自動 enforcement + A2A directive（紙面 SOP → 真實 gate）
+
+回應 user：「有寫入 skill 會自動達成嗎? 要 這樣才有價值 寫成 A2A 要看的規範」。v0.38.0 自查發現 Skill 寫得多漂亮都只是文件 — AI Coder 沒讀就等於沒寫。v0.39.0 把 4 條 Skill 規則**轉譯為真實的 CI / pre-commit / CODEOWNERS / PR template 自動 gate**，加上 A2A directive 讓未來任何 AI consumer（Claude / Codex / Gemini / ...）有 machine-readable 規格可循。
+
+### 🆕 `.github/workflows/security-gate.yml` 新增 `ext-dep-skill-enforcement` job
+
+4 個 step，每個對應一條 Skill 規則：
+
+| Gate | 對應 Skill | CI step |
+| --- | --- | --- |
+| **A** SEC-DEP entry 必存在 | external-dependency-security §1.5 + code2n8n-pipeline §1.8 | diff package.json 取新增 dep → grep SECURITY-REVIEW for `SEC-DEP-<sanitized>-<ver>`，缺 → fail |
+| **B** exact pin 強制（無 caret/tilde/range） | §1.6 + SEC-017 reinforcement | node script 掃 case-study `svc/package.json` + `api/package.json`，任何 `^`/`~`/`>`/`<`/`=` 開頭 → fail |
+| **C** GitHub raw URL 必鎖 commit sha | §3 | grep `ls-files` 所有 committed file，凡 `raw.githubusercontent.com/<owner>/<repo>/<ref>/` 的 `<ref>` 非 40-char hex → fail |
+| **D** Dockerfile `FROM` 必 hash-pin 或 ARG/DIGEST | §5.2 | grep `Dockerfile` 的 `FROM` 行，無 `@sha256:` 且無 `ARG.*IMAGE/DIGEST` → fail |
+
+4 道都 PR fail → merge button 變灰，AI Coder 沒辦法繞。
+
+### 🆕 [`scripts/pre-commit-ext-dep-gates.sh`](scripts/pre-commit-ext-dep-gates.sh)
+
+本機 pre-commit hook，跑同樣 3 道 gate（B / C / D；Gate A 太重需要 SECURITY-REVIEW 全 scan，留給 CI）。安裝：
+
+```bash
+chmod +x scripts/pre-commit-ext-dep-gates.sh
+ln -sf ../../scripts/pre-commit-ext-dep-gates.sh .git/hooks/pre-commit
+```
+
+AI Coder 推 commit 前**立刻**收到 feedback，不用等 CI 跑完才知道紅。
+
+### 🆕 [`.github/CODEOWNERS`](.github/CODEOWNERS)
+
+dep manifests / Dockerfile / compose / SECURITY-REVIEW / 3 個 security Skill / scanner / ingest gate 任一檔案改動，GitHub 自動 request `@MorrisLu-Taipei` review。配合 branch protection rule「Require review from CODEOWNERS」，這些 PR**無法 merge** 直到 human 簽核。
+
+**為何重要**：Renovate 已設 `automerge: false`，但 AI Coder / 任何 contributor 開的手動 PR 也可能改 dep。CODEOWNERS 補這條 — 任何改動依賴 / 安全機制本身的 PR 都過人類 review。
+
+### 🆕 [`.github/pull_request_template.md`](.github/pull_request_template.md)
+
+PR 開啟時自動展開 template，含：
+- 「External dependency review」section（trust level / L1 audit / L2 socket / L3 source review / SEC-DEP link 表）
+- Skill `external-dependency-security` checklist（10 個 checkbox 對應 §1.6 / §1.2 / §1.3 / §1.4 / §1.5 / §3 / §5.2 / §5.4）
+- 外部 workflow JSON ingestion checklist（如適用）
+- V&V evidence schema 範本（[`code2n8n-pipeline` §1.6](skills/tigerai/code2n8n-pipeline/SKILL.md#16-🚨-lexical-schema-before-claim-rule最強制條款--加入於-v0303)）
+- 5 個 CI 必過 check 列表（ext-dep-skill-enforcement / dependency-cve / workflow-security-scan / container-scan / sbom-generate）
+
+### 🆕 A2A directive — [`docs/external-dependency-security-a2a.md`](docs/external-dependency-security-a2a.md) + [中文](docs/external-dependency-security-a2a.zh.md)
+
+對未來 AI consumer 的 **machine-actionable** 規格，跟 v0.28.1 的 [`code2n8n-vv-a2a.md`](docs/code2n8n-vv-a2a.md) 同形式。含：
+
+- **何時觸發**：6 個明確觸發條件（npm install / version bump / Dockerfile FROM / curl github raw 寫 commit / 外部 workflow JSON 入 examples/ / user 隱含「ship」「上架」等指令）
+- **四道 gate 規格**：每道含 trigger / 工具呼叫 / 通過 criterion / CI check 名稱 / 禁止行為
+- **High-trust 套件人類 gate**：CODEOWNERS 強制 + L3 review commit sha 填表
+- **外部 workflow JSON ingestion**：呼叫 v0.37.0 ingest gate
+- **禁用詞清單**：跨語言 11 個禁用詞（validated / 驗證 / production-ready / 已驗證 / ...）+ 必對應的 evidence schema
+- **Critic enforcement lexical regex**：3 條 regex 任一命中即 VETO（npm install / `/main/` raw URL / unpinned FROM）
+- **本 directive 不做的事**（L3 source review / signature 驗證 / image rebuild）— 誠實邊界
+
+### 🔒 SECURITY-REVIEW SEC-020 新加
+
+新 SEC-020：「Skill 規則無自動 enforcement」。v0.38.0 🔴 OPEN → v0.39.0 ✅ FIXED via Skill → automated gate translation。
+
+### V&V Layer 1
+
+- `node scripts/security-scan.mjs --glob "examples/**/*.workflow.json"` → 30 files, 0 error / 20 warning（regression 無）
+- 自製 fixture 跑 ingest gate → exit 1（Gate A 擋下）
+- 缺 marker 的 clean workflow 跑 ingest gate → exit 2（Gate B 擋下）
+
+### V&V Layer 2
+
+- 4 道新 CI gate 對「乾淨 PR」全綠、對「違規 PR」全紅 — **PENDING tracked-as v0.39.x**（待第一次違規 PR 觸發）
+- pre-commit hook 行為 — **PENDING tracked-as v0.39.x**（待 AI Coder / 人類安裝後實測）
+- CODEOWNERS 真的會 request review — **PENDING tracked-as v0.39.x**（待第一次 dep manifest PR）
+
+### 對「D 全做」goal 的完整收尾
+
+| Tier | Release | 對應 SEC | 範圍 |
+| --- | --- | --- | --- |
+| Tier 1 | v0.36.0 | SEC-017 ✅ | scanner 偵測 + audit gate + exact pin policy + SKILL §1.8 |
+| Tier 2 | v0.37.0 | SEC-018 ✅ | container 硬化 + SBOM + Trivy + Renovate + ingestion script |
+| Tier 3 | v0.38.0 | SEC-019 ✅ | 治理 Skill（SOP narrative） |
+| **Tier 4** | **v0.39.0** | **SEC-020 ✅** | **Skill SOP → 真實 CI/hook/CODEOWNERS/template/A2A 自動 enforce** |
+
+「對外部 GitHub 進來後有做 security check and enhancements 嗎? 有對惡意程式做處理嗎??」現在的答：**有，而且不是文件 SOP 是自動 gate；AI Coder 違規即 CI 擋下，人類沒簽核不能 merge**。
+
 ## v0.38.0 — 外部依賴安全 Tier 3：新 Skill `external-dependency-security` 治理層 + SCA gate Stage 7 整合
 
 SEC-019 fix。完成「D 全做」goal 的最後一塊：Tier 3 治理層 Skill。Tier 1 (v0.36.0) 給工具、Tier 2 (v0.37.0) 限血量、Tier 3 (v0.38.0) **把 SOP 系統化到 AI Coder 跨案例可重用的 Skill**。
