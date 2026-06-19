@@ -1,5 +1,37 @@
 # Changelog
 
+## v0.34.0 — void-with-approval v3 native Form HITL（Email + n8n Form 表單核可）給台灣不用 Slack 的情境
+
+回應使用者：「Slack 在台灣很少人用，可以改別的嗎」。Ship v3 = **email 通知 + n8n Wait `resume: form`** 寫法 — 主管收 email 點連結 → 開啟 n8n 內建 HTML 表單頁（dropdown approve/reject + 核可人 email + 補充說明）→ submit → execution 自動 resume。
+
+### 🆕 [`workflows/einvoice-void-with-approval-v3-form-native.workflow.json`](examples/einvoice-n8n/workflows/einvoice-void-with-approval-v3-form-native.workflow.json)
+
+12 個節點。改動重點：
+- **Email Send 節點（普通 send，非 sendAndWait）**：寄 HTML 通知信，內含 `{{ $execution.resumeUrl }}` 按鈕。
+- **Wait node `resume: form`**：定義 3 個欄位 — `decision` dropdown (approve/reject)、`approver_email` email field、`note` textarea。
+- **Rehydrate Code 讀 `$json.decision` / `$json.approver_email` / `$json.note`**（form fieldLabel 變 $json 的 key）。
+- audit row 新增 `note` 欄位，記錄核可人補充說明。
+
+### v1 / v2 / v3 三版取捨表
+
+| 面向 | v1 (DIY) | v2 (Slack native) | v3 (Form native) |
+| --- | --- | --- | --- |
+| 適合台灣? | ⭐⭐⭐ 看 IM | ⭐ Slack 在台灣少 | ⭐⭐⭐⭐⭐ **email 人人有** |
+| 可填補充欄位? | ❌ 二選一 | ❌ 二選一 | ✅ 任意欄位 |
+| 跨組織核可 | 看 IM | Slack workspace 內 | ✅ 跨公司可達 |
+| approver 身分驗證 | 裸 resume URL | Slack OAuth 驗簽 | n8n form execution token |
+| 上線前額外硬化 | 必須 HMAC proxy | 不需要 | 敏感場景建議 SSO/magic-link |
+
+### 🔒 SECURITY-REVIEW SEC-9 加註 v3 status
+
+v0.33.0「✅ FIXED via v2 native pattern」之外加 v0.34.0「✅ ALSO FIXED via v3 Form native pattern」— **台灣 / 非 Slack 場景推薦走 v3**。
+
+### Layer 1 V&V evidence
+
+- JSON parse: PASS (1 file)
+- security-scan.mjs: 0 error / 1 warning（pre-existing webhook:no-auth，依 SECURITY-REVIEW §3.1 documented）
+- live-roundtrip.mjs: 1/1 ok（n8n 接受 Wait node form mode + 3 個 formFields 配置）
+
 ## v0.33.0 — void-with-approval v2 native HITL（Slack Send-and-Wait）+ SEC-9 從「需前置 HMAC proxy」收緊為「Slack OAuth 即可」
 
 回應使用者：「n8n 不是有 human in the loop 設計，我想知道怎麼配合」。發現我們 v0.27.0 寫的版本是 **DIY 老派寫法**（Slack 普通訊息 + Wait 節點分開 + 文字塞 `$execution.resumeUrl`）— 不是 n8n 1.50+ 之後的官方推薦 HITL 機制。Ship v2 原生版。

@@ -1,0 +1,273 @@
+{
+  "name": "einvoice-void-with-approval (v3 native Form) — Email notify + n8n Form approval → svc/v1/void",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## einvoice-void-with-approval v3 (native Form HITL) — v0.34.0\n\n**為何此版存在**：台灣很少用 Slack。v2 雖然官方但綁在 Slack/Telegram/Discord 等 IM。v3 改用**email 通知 + n8n 內建 HTML Form**做核可介面 — 主管打開 email 點連結 → 開啟 n8n 自家表單頁 → 填欄位（核可 / 拒絕、補充說明、必要時上傳附件）→ 送出 → execution 自動 resume。\n\n**v3 vs v2 vs v1 三版取捨**\n\n| 面向 | v1 (DIY) | v2 (Slack native) | v3 (Form native) |\n| --- | --- | --- | --- |\n| 核可介面 | 自組訊息 + 裸 resume URL | Slack 訊息 + Approve/Reject 按鈕 | Email 通知 + n8n 表單頁 |\n| 適合台灣? | ⭐⭐⭐ 看你用什麼 IM | ⭐ Slack 在台灣少 | ⭐⭐⭐⭐⭐ **email 人人都有** |\n| 可填補充欄位? | ❌ 只 approve/reject | ❌ 只 approve/reject | ✅ **可加任意欄位**（核可金額、補充理由、上傳憑證）|\n| 跨組織核可? | 看 IM 可達性 | Slack workspace 內 | ✅ **跨公司可達**（外部會計師、董事會成員都能收 email）|\n| approver 身分 | URL 外洩即被 approve | Slack OAuth 驗簽 | n8n form token 驗簽（URL 含 nonce） |\n| 稽核 trail | IM log | Slack log | Email log + form 提交紀錄 |\n| 上線前安全硬化 | 必須前置 HMAC proxy | 用 Slack OAuth 即可 | n8n form 自帶 token；建議外加 SSO 或 magic-link 二次驗證 |\n\n**v3 流程**\n1. CS 打 `POST /webhook/einvoice/void`。\n2. Stamp correlation 蓋 correlationId。\n3. **Send Email** 寄通知信給主管，內含 `{{ $execution.resumeUrl }}` 連結。\n4. **Wait node `resume: form`** 暫停 execution，同時在 resume URL 上提供 HTML 表單（兩個欄位：`decision` 下拉 / `note` 文字框）。\n5. 主管打開 email → 點連結 → 填表單 → 送出 → execution resume。\n6. Rehydrate 讀表單欄位。\n7. Switch on `decision` → approve 走 svc /v1/void + audit；reject 直接 audit。\n\n**何時用 v3 而非 v2**\n- 收件人沒用 Slack（**台灣多數情境**）\n- 需要核可時同時收集**補充資訊**（核可金額上限、附條件、上傳憑證影本）\n- 跨組織 / 跨公司核可（外部會計師簽核）\n- 主管不在線上即時看 IM，但會定期收 email\n\n**何時用 v2 而非 v3**\n- 你公司就是用 Slack/Telegram/Discord 而且要求即時 push\n- 核可只是二選一，不需要補充欄位\n\n**Trigger**：webhook POST `/webhook/einvoice/void`，body 同 v1/v2：\n```json\n{ \"provider\": \"amego\", \"requestedBy\": \"jane@company.tw\", \"reason\": \"客戶取消訂單\", \"input\": { \"invoiceNumber\": \"AB12345678\", \"reason\": \"客戶取消\" } }\n```\n\n**上線前需替換**：`__REPLACE_ME__EINVOICE_SVC_URL__`、`__REPLACE_ME__APPROVER_EMAIL__`、`__REPLACE_ME__GOOGLE_SHEET_ID__`。\n\n**上線前 credential**：Email Send 節點掛 SMTP / Gmail OAuth；HTTP 節點掛 httpHeaderAuth；Google Sheets 節點掛 OAuth2。\n\n**上線前硬化建議**：n8n form 的 resume URL 含執行 token，本身具一定防爆破能力。但若核可內容敏感（金額、客戶資料），建議**前置 SSO 或 magic-link 二次驗證** — 例如把 resume URL 包到自家 IdP 的「需登入才可開啟」連結後面。SECURITY-REVIEW SEC-9-form 已記載。",
+        "height": 1080,
+        "width": 580
+      },
+      "id": "note-1",
+      "name": "Pattern note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-740, -460]
+    },
+    {
+      "parameters": {
+        "path": "einvoice/void",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-1",
+      "name": "Webhook: void request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [-120, -40]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const body = $json.body || $json;\nfor (const k of ['provider','input','requestedBy','reason']) if (!body[k]) throw new Error(`${k} required`);\nreturn [{ json: {\n  correlationId: `inv-void-${Date.now()}-${Math.floor(Math.random()*1e6)}`,\n  requestedAt: new Date().toISOString(),\n  provider: body.provider,\n  requestedBy: body.requestedBy,\n  reason: body.reason,\n  input: body.input\n}}];"
+      },
+      "id": "stamp-1",
+      "name": "Stamp correlation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [120, -40]
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@your-company.tw",
+        "toEmail": "__REPLACE_ME__APPROVER_EMAIL__",
+        "subject": "=🛑 VOID 核可請求 — Invoice {{ $json.input?.invoiceNumber }}",
+        "emailFormat": "html",
+        "html": "=<h2>🛑 VOID 核可請求</h2>\n<table style=\"border-collapse:collapse;\">\n<tr><td><b>Invoice</b></td><td><code>{{ $json.input?.invoiceNumber }}</code></td></tr>\n<tr><td><b>Provider</b></td><td>{{ $json.provider }}</td></tr>\n<tr><td><b>Requested by</b></td><td>{{ $json.requestedBy }}</td></tr>\n<tr><td><b>Reason</b></td><td>{{ $json.reason }}</td></tr>\n<tr><td><b>Correlation</b></td><td><code>{{ $json.correlationId }}</code></td></tr>\n</table>\n<p style=\"color:#c00;font-weight:bold;\">⚠ Void 不可逆。按下「核可」即承擔此筆 audit 責任。</p>\n<p><a href=\"{{ $execution.resumeUrl }}\" style=\"display:inline-block;padding:10px 20px;background:#0066cc;color:white;text-decoration:none;border-radius:4px;font-weight:bold;\">📝 開啟核可表單</a></p>\n<p style=\"color:#666;font-size:12px;\">本連結 4 小時內有效，過期後本筆作廢請求將自動視為拒絕。</p>",
+        "options": {}
+      },
+      "id": "email-notify-1",
+      "name": "Email approver",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [360, -40]
+    },
+    {
+      "parameters": {
+        "resume": "form",
+        "formTitle": "=einvoice 作廢核可 — {{ $json.input?.invoiceNumber }}",
+        "formDescription": "=本筆作廢請求由 {{ $json.requestedBy }} 提出，原因：{{ $json.reason }}。⚠ 作廢不可逆。",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "decision",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "multiSelect": false,
+              "fieldOptions": {
+                "values": [
+                  { "option": "approve" },
+                  { "option": "reject" }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "approver_email",
+              "fieldType": "email",
+              "requiredField": true,
+              "placeholder": "you@company.tw"
+            },
+            {
+              "fieldLabel": "note",
+              "fieldType": "textarea",
+              "requiredField": false,
+              "placeholder": "補充說明（必要時填寫核可條件、附條件等）"
+            }
+          ]
+        },
+        "options": {
+          "responseTimeout": "4h"
+        }
+      },
+      "id": "wait-form-1",
+      "name": "Wait for form submission",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [600, -40]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// After form submission, $json contains the form field values keyed by fieldLabel.\nconst state = $node['Stamp correlation'].json;\nconst decision = ($json.decision || '').toLowerCase();\nconst approved = decision === 'approve';\nconst approver = $json.approver_email || 'form-unknown';\nconst note = $json.note || '';\nreturn [{ json: {\n  ...state,\n  decision,\n  approved,\n  approver,\n  note,\n  decidedAt: new Date().toISOString()\n}}];"
+      },
+      "id": "rehydrate-1",
+      "name": "Rehydrate after form",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, -40]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.approved }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-1",
+      "name": "Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1080, -40]
+    },
+    {
+      "parameters": {
+        "url": "=__REPLACE_ME__EINVOICE_SVC_URL__/v1/void",
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ { provider: $json.provider, input: $json.input } }}",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "specifyBody": "json"
+      },
+      "id": "http-void-1",
+      "name": "Call svc /v1/void",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1320, -160]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const state = $node['Rehydrate after form'].json;\nconst statusCode = Number($json.statusCode ?? 0);\nconst ok = statusCode >= 200 && statusCode < 300;\nreturn [{ json: { ...state, statusCode, ok, response: $json.body ?? $json } }];"
+      },
+      "id": "merge-1",
+      "name": "Rehydrate after void",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, -160]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": "__REPLACE_ME__GOOGLE_SHEET_ID__",
+        "sheetName": "Audit",
+        "columnsUi": {
+          "columnValues": [
+            { "column": "correlationId", "value": "={{ $json.correlationId }}" },
+            { "column": "op", "value": "void" },
+            { "column": "provider", "value": "={{ $json.provider }}" },
+            { "column": "invoiceNumber", "value": "={{ $json.input?.invoiceNumber }}" },
+            { "column": "requestedBy", "value": "={{ $json.requestedBy }}" },
+            { "column": "approver", "value": "={{ $json.approver }}" },
+            { "column": "note", "value": "={{ $json.note }}" },
+            { "column": "reason", "value": "={{ $json.reason }}" },
+            { "column": "status", "value": "={{ $json.ok ? 'voided' : 'failed' }}" },
+            { "column": "appliedAt", "value": "={{ $json.decidedAt }}" }
+          ]
+        }
+      },
+      "id": "audit-ok-1",
+      "name": "Audit (approved)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1800, -160]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": "__REPLACE_ME__GOOGLE_SHEET_ID__",
+        "sheetName": "Audit",
+        "columnsUi": {
+          "columnValues": [
+            { "column": "correlationId", "value": "={{ $json.correlationId }}" },
+            { "column": "op", "value": "void" },
+            { "column": "provider", "value": "={{ $json.provider }}" },
+            { "column": "invoiceNumber", "value": "={{ $json.input?.invoiceNumber }}" },
+            { "column": "requestedBy", "value": "={{ $json.requestedBy }}" },
+            { "column": "approver", "value": "={{ $json.approver }}" },
+            { "column": "note", "value": "={{ $json.note }}" },
+            { "column": "reason", "value": "={{ $json.reason }}" },
+            { "column": "status", "value": "rejected" },
+            { "column": "appliedAt", "value": "={{ $json.decidedAt }}" }
+          ]
+        }
+      },
+      "id": "audit-rej-1",
+      "name": "Audit (rejected)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1320, 80]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: !!$json.ok, correlationId: $json.correlationId, decision: $json.decision, approver: $json.approver, note: $json.note, status: $json.approved ? ($json.ok ? 'voided' : 'failed') : 'rejected' }) }}",
+        "options": {}
+      },
+      "id": "respond-1",
+      "name": "Respond to caller",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2040, -80]
+    }
+  ],
+  "connections": {
+    "Webhook: void request": {
+      "main": [[{ "node": "Stamp correlation", "type": "main", "index": 0 }]]
+    },
+    "Stamp correlation": {
+      "main": [[{ "node": "Email approver", "type": "main", "index": 0 }]]
+    },
+    "Email approver": {
+      "main": [[{ "node": "Wait for form submission", "type": "main", "index": 0 }]]
+    },
+    "Wait for form submission": {
+      "main": [[{ "node": "Rehydrate after form", "type": "main", "index": 0 }]]
+    },
+    "Rehydrate after form": {
+      "main": [[{ "node": "Approved?", "type": "main", "index": 0 }]]
+    },
+    "Approved?": {
+      "main": [
+        [{ "node": "Call svc /v1/void", "type": "main", "index": 0 }],
+        [{ "node": "Audit (rejected)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Call svc /v1/void": {
+      "main": [[{ "node": "Rehydrate after void", "type": "main", "index": 0 }]]
+    },
+    "Rehydrate after void": {
+      "main": [[{ "node": "Audit (approved)", "type": "main", "index": 0 }]]
+    },
+    "Audit (approved)": {
+      "main": [[{ "node": "Respond to caller", "type": "main", "index": 0 }]]
+    },
+    "Audit (rejected)": {
+      "main": [[{ "node": "Respond to caller", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Taipei"
+  },
+  "active": false,
+  "pinData": {},
+  "tags": []
+}
