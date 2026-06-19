@@ -2,6 +2,19 @@
 
 > 🌐 [English](README.en.md) | **繁體中文**
 
+> ## v1.0 狀態 — Structural PASS · Runtime 需 caller credentials
+>
+> | 面向 | 狀態 |
+> | --- | --- |
+> | **Code2n8n 路徑** | Path B：1,373 行 Apps Script → core + entry n8n workflows（逐行 `PROVENANCE.md`）|
+> | **在 [4-case spectrum](../../CODE2N8N.md#the-4-case-spectrum-code2n8n-journeys-ship-in-this-pack) 位置** | #1 of 4 |
+> | **Layer 1 V&V**（structural）| ✅ Static lint 0 err / 0 warn · n8n REST import 7/7 |
+> | **Layer 2 V&V**（runtime）| ⚠ Requires caller Google Workspace credentials — not validated end-to-end in Pack CI |
+> | **上游 license** | MIT — [`mihozip/google-workspace-admin-project-workflow`](https://github.com/mihozip/google-workspace-admin-project-workflow) |
+> | **Pack-authored layer** | core + entry workflows + `PROVENANCE.md` 逐行對應 + n8n REST import 驗證 |
+> | **跟 v1.0 CLEARED 案例（einvoice）的差別** | 此案例**沒有真實 vendor sandbox runtime evidence**（GW API 需 caller 自有 credentials），完整 Path B 三段中第三段（real-vendor-sandbox runtime PASS）由 caller 自行完成 |
+> | **Claims & evidence** | [v1-claims-and-evidence.md](../../docs/v1-claims-and-evidence.md) |
+
 從 [mihozip/google-workspace-admin-project-workflow](https://github.com/mihozip/google-workspace-admin-project-workflow) 的 Google Apps Script 版本完整移植到 n8n。
 
 原版是一個給學校教育人員與行政承辦的「半自動行政專案啟動器」：填一張表單，自動建立專案資料夾、專案紀錄文件、待辦追蹤表、成果檢核表、Calendar 提醒，並寫入總控表、寄信通知。本目錄把這套邏輯 1:1 在 n8n 重做。

@@ -54,6 +54,29 @@ The seven official n8n skills bundled under `skills/_vendor/` are from:
 
 ---
 
+## 3. `examples/line-ai-customer-service-onprem/` — scorpioliu0953/ai_customer_service
+
+The on-prem LINE customer-service case is derived from:
+
+- **Source**: https://github.com/scorpioliu0953/ai_customer_service
+- **License**: MIT License
+- **Attribution chain**: see [`examples/line-ai-customer-service-onprem/CREDITS.md`](examples/line-ai-customer-service-onprem/CREDITS.md)
+- **Use in this repo**: Preserved as a teaching artefact with full security defects disclosed in [`examples/line-ai-customer-service-onprem/SECURITY-CAVEATS.md`](examples/line-ai-customer-service-onprem/SECURITY-CAVEATS.md) — **DO NOT DEPLOY AS-IS**.
+
+---
+
+## 4. `examples/einvoice-n8n/` — paid-tw/einvoice (SDK consumed via npm)
+
+The Taiwan e-invoice case (the v1.0 milestone case) is built on top of:
+
+- **Source**: https://github.com/paid-tw/einvoice
+- **License**: MIT License
+- **Packages consumed**: `@paid-tw/einvoice`, `@paid-tw/einvoice-amego`, `@paid-tw/einvoice-ecpay`, `@paid-tw/einvoice-ezpay`, `@paid-tw/einvoice-ezpay-crossborder`, `@paid-tw/einvoice-ezreceipt`
+- **Use in this repo**: Consumed via `npm install` with exact pins (no caret/tilde; per [SEC-017](examples/einvoice-n8n/SECURITY-REVIEW.md)). **No SDK source is vendored into this repo.** Pack-authored layer is the 80-line Hono `svc/` wrapper + 14 n8n workflows + SECURITY-REVIEW + Amego sandbox runtime test runner — all MIT-licensed under TigerAI copyright.
+- **Runtime verification scope**: Amego SDK capability runtime PASS against real Amego public sandbox (10/10, 11 invoice traces); 4 other providers (ECPay / ezPay / ezPay cross-border / ezReceipt) have no public sandbox accounts — structural OK, runtime open. See [`examples/einvoice-n8n/tests/v0.41-final-validation-report.md`](examples/einvoice-n8n/tests/v0.41-final-validation-report.md).
+
+---
+
 ## License of the rest
 
 The rest of this repository (TigerAI-authored skills, cookbook, specs,

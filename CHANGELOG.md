@@ -1,5 +1,70 @@
 # Changelog
 
+## v1.0.3 — CODE2N8N.md v1.0 rewrite + License completeness + case READMEs v1.0 status banner
+
+User feedback:
+1. CODE2N8N.md should be updated (English first / Chinese second / top URLs / einvoice case included / more complete)
+2. License section forgot to include einvoice case
+3. Case studies should have independent READMEs telling complete stories
+4. tigerai-flagship had no README.md (CODE2N8N referenced but file didn't exist)
+
+### CODE2N8N.md — full v1.0 manifesto rewrite
+
+- **English first** (canonical), **繁體中文** second
+- **Top URLs**: Repo + v1.0 milestone link + claims & evidence index + 2 A2A directives
+- **Rename history table** explaining v0.21.0 → v0.41.0 → v1.0.0 evolution (each rename rationale)
+- **4-case spectrum** now includes the v1.0 milestone case (Taiwan e-invoice) with ⭐ marker — previously only 3 cases
+- **V&V gate section** describing two-layer enforcement (per A2A directive)
+- **4-Tier external-dependency security section** with per-Tier release mapping (v0.36 → v0.39)
+- **Updated AI ↔ Code2n8n ↔ n8n division-of-labour table** adds 2 new dimensions: external-dependency security + cross-AI handoff via A2A directives
+- §1.6 compliant — all restricted-phrase mentions preceded by evidence markers (`per A2A directive` / `## V&V evidence`); self-scan **0 violations** in CODE2N8N.md (was 7 in v0.X era)
+
+### README License section + THIRD_PARTY_NOTICES.md — completeness
+
+User-noticed gap: einvoice case (the v1.0 milestone) was not listed in the License section. Now both:
+
+- **README.md License section**: adds einvoice entry — derived from MIT `paid-tw/einvoice` SDK, consumed via `npm install` with exact pins per [SEC-017](examples/einvoice-n8n/SECURITY-REVIEW.md), no SDK source vendored
+- **THIRD_PARTY_NOTICES.md**: new sections §3 (line-onprem) + §4 (einvoice), each with source URL / license / use scope / runtime verification scope
+
+### tigerai-flagship — new README.md (English-first thin shell)
+
+CODE2N8N.md and Pack README reference `examples/tigerai-flagship/` but no README.md existed (only INDEX.md / INDEX.en.md, which GitHub doesn't auto-render as directory landing). New `README.md`:
+
+- English-first per Pack v1.0 convention
+- Clearly marks **pre-v1.0 reference workflows** — not part of v1.0 Path B verification trio
+- Links to INDEX.md (Chinese) / INDEX.en.md (English) for full deployment guidance
+- Three flagship examples table (splitPDF / splitMP3 / openwebui-bridge-v2) with patterns demonstrated
+
+### GW / LINE cloud / LINE on-prem READMEs — v1.0 status banner inserted
+
+Each existing case README now starts with a uniform **v1.0 status banner** (concise table) covering:
+
+- Code2n8n journey description
+- Position in 4-case spectrum
+- Layer 1 V&V status
+- Layer 2 V&V status (with honest scope on runtime)
+- Upstream license + attribution
+- Pack-authored layer description
+- Comparison to the v1.0 CLEARED einvoice case
+- Link to v1-claims-and-evidence
+
+This brings the 4 cases' README structure into alignment without rewriting the existing case-specific content. Each case's deeper docs remain unchanged.
+
+### Self-scan progress
+
+- Pre-v1.0.3 total violations: 28
+- CODE2N8N.md after rewrite: **0 violations** (from 7 in v0.X era — full migration)
+- Total after v1.0.3: 21 (CODE2N8N.md cleared; remaining 21 in README.zh.md / docs/why / docs/external-package-security-posture — backlog tracked in [`docs/v1-claims-and-evidence.md`](docs/v1-claims-and-evidence.md) §3)
+
+### V&V Layer 1
+
+- `scripts/security-scan.mjs --glob "examples/**/*.workflow.json"` → 30 files, 0 error / 20 documented warning (regression-free)
+- `scripts/self-scan-forbidden-phrases.mjs` → CODE2N8N.md 0 violations; case READMEs' new banners 0 violations
+
+### V&V Layer 2
+
+- Doc release; existing runtime evidence (Amego 10/10 + v3 Form HITL exec 526/527 + Tier 1-4 CI gates + 22 SEC entries closing report) still PASS
+
 ## v1.0.2 — README v1.0 banner cleanup（mixed-language → English-only，更精煉）
 
 User feedback: 「很亂 只留英文就好」。v1.0.1 ship 的 v1.0 banner 中英混排（標題用 Chinese「轉換」「資安驗證」「實際測試完成」+ 英文行內容 + 中文括號註解），雜訊大。v1.0.2 改純英文 + 收斂結構。

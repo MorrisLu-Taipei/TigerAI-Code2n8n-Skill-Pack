@@ -2,6 +2,20 @@
 
 > 🌐 [English](README.en.md) | **繁體中文**
 
+> ## v1.0 狀態 — Structural PASS · Runtime 需 caller credentials
+>
+> | 面向 | 狀態 |
+> | --- | --- |
+> | **Code2n8n 路徑** | Path B：Netlify Functions + Supabase + GPT/Gemini → n8n runtime + approach-C admin UI |
+> | **在 [4-case spectrum](../../CODE2N8N.md#the-4-case-spectrum-code2n8n-journeys-ship-in-this-pack) 位置** | #2 of 4 |
+> | **Layer 1 V&V**（structural）| ✅ Static lint 0 err / 0 warn · n8n REST import 6/6 |
+> | **Layer 2 V&V**（runtime）| ⚠ Requires caller LINE + Supabase credentials — not validated end-to-end in Pack CI |
+> | **上游 license** | MIT — [`scorpioliu0953/ai_customer_service`](https://github.com/scorpioliu0953/ai_customer_service) |
+> | **Pack-authored layer** | core + entry workflows + approach-C admin UI + 雲端版 SDD spec |
+> | **跟 v1.0 CLEARED 案例（einvoice）的差別** | 此案例**沒有真實 vendor sandbox runtime evidence**（LINE Messaging API + Supabase 需 caller 自有帳號），完整 Path B 三段中第三段由 caller 自行完成 |
+> | **跟 #3 LINE on-prem 案例的差別** | 此為**雲端版**，安全 review 結果是 structural PASS；#3 是**地端版**，安全 review 揭露重大缺陷 → DO NOT DEPLOY AS-IS |
+> | **Claims & evidence** | [v1-claims-and-evidence.md](../../docs/v1-claims-and-evidence.md) |
+
 從 [scorpioliu0953/ai_customer_service](https://github.com/scorpioliu0953/ai_customer_service)（Netlify + React + Supabase + GPT/Gemini）的 **後端 webhook** 移植到 n8n。
 
 > 💡 **想看同一系統的進階企業版？** 走 [`../line-ai-customer-service-onprem/`](../line-ai-customer-service-onprem/) — 同一上游、地端 Docker 演化、Ollama + Qdrant RAG、真實 5 階段 V&V。兩個範例並排可看「同一程式可走不同 Code2n8n 路徑」。完整方法論見 marquee skill [`code-to-workflow`](../../skills/tigerai/code-to-workflow/SKILL.md)。

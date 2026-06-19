@@ -1,7 +1,20 @@
 # LINE AI 客服系統 — 地端 Docker 版（Code2n8n 案例）
 
 > 🌐 **繁體中文** | [English summary at bottom](#english-summary)
+
+> ## v1.0 狀態 — DO NOT DEPLOY AS-IS（教學 artefact）
 >
+> | 面向 | 狀態 |
+> | --- | --- |
+> | **Code2n8n 路徑** | Path B：Docker + Postgres + Redis + Qdrant + Ollama + n8n（37 節點大腦） |
+> | **在 [4-case spectrum](../../CODE2N8N.md#the-4-case-spectrum-code2n8n-journeys-ship-in-this-pack) 位置** | #3 of 4 |
+> | **Layer 1 V&V**（structural）| ✅ 5-phase V&V |
+> | **Layer 2 V&V**（runtime）| 🔴 **安全 audit 揭露重大缺陷 — DO NOT DEPLOY AS-IS** — 完整揭露於 [`SECURITY-CAVEATS.md`](SECURITY-CAVEATS.md) |
+> | **上游 license** | MIT — [`scorpioliu0953/ai_customer_service`](https://github.com/scorpioliu0953/ai_customer_service)（attribution 詳 [`CREDITS.md`](CREDITS.md)） |
+> | **保留動機** | 教學 artefact — 完整保留 demo-ready POC 的 typical 安全缺陷（fake auth / 無 middleware / SQL identifier injection / 明文密碼 / secrets 外露 / 無 CSRF / 無 rate limit / 無 audit log），讓讀者親自走 Step 1.5 Security Audit 流程 |
+> | **跟 v1.0 CLEARED 案例（einvoice）的對照** | 此案例是「**demo 能跑、但企業不可上線**」的標本，呼應 CODE2N8N manifesto 的核心命題：AI-written software that runs is not automatically software an enterprise can deploy |
+> | **Claims & evidence** | [v1-claims-and-evidence.md](../../docs/v1-claims-and-evidence.md) |
+
 > ## ⚠️ 安全警告（必讀）
 >
 > **本範例不可公開部署。** 上游 POC 程式碼有**零真實認證**（`/api/auth/me` 永遠回登入成功 + 所有 `/api/*` 資料路由完全裸奔）和 **SQL identifier injection**（`updateSettings` 把 request body 的 key 直接拼進 SQL）。明文密碼、無 CSRF / rate limit / audit log、n8n credential 名單外露⋯⋯
