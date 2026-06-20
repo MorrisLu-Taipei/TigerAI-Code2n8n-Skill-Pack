@@ -99,7 +99,6 @@ Google Sheet 結構：
 | 作廢不可逆 | `einvoice-void-with-approval` 強制走 `human-approval-gate`；reject / timeout 也寫 Audit |
 | 跨境 currency | `provider-failover` 範例：`capability: FOREIGN_CURRENCY, candidates: ['amego', 'ezpay-crossborder']` |
 | PII 留存 | Audit 含 buyer email / UBN / 品項；商業會計法**至少 10 年**，Audit Sheet retention 要設好 |
-| `MockProvider` 進正式 | 在 workflow 內檢查 `provider !== 'mock'` 或讓 svc 在 `EINVOICE_MODE=PRODUCTION` 時拒絕 `mock` |
 
 ## Validation 紀錄
 
@@ -178,7 +177,7 @@ caller → n8n workflow → svc REST → @paid-tw/einvoice SDK → 真實 Amego 
                                                           開出真實發票（可查 Amego 後台）
 ```
 
-**不使用**：本地 docker vendor 模擬器（v0.41.0 起明確 deprecated — SDK 已附 `MockProvider` 完勝；真實 sandbox 才是 ground truth）。詳見 SEC-022 + 結案報告 §6。
+**不使用**：本地 docker vendor 模擬器（v0.41.0 起明確 deprecated — 真實 sandbox 才是 ground truth）。詳見 SEC-022 + 結案報告 §6。
 
 ### 其他 4 個 provider 範圍
 
@@ -262,16 +261,9 @@ cd examples/einvoice-n8n/sandbox && \
 
 ### 5. 為何不用 docker 模擬器（v0.41.0 重要決定）
 
-詳見 SEC-022。簡述：
+詳見 SEC-022。簡述：v0.30.1 自蓋的 5 個 vendor router 是 over-engineering — Zod 驗證會跟 SDK 漂移、狀態機沒實作、capability 強制沒實作、信心度僅 sandbox 級。**Amego 用真實 sandbox（ground truth）；其他 4 家無公開測試帳號，runtime 未驗（誠實揭露，不替代）**。
 
-| 用 docker vendor 模擬器 | 用真實 Amego sandbox + SDK MockProvider |
-| --- | --- |
-| 自蓋 Zod 驗證（跟 SDK 漂移） | 與 SDK 真實 adapter 同一份 schema |
-| 狀態機沒實作 | 內建 |
-| capabilities 強制沒實作 | 內建（比真實 Amego SDK adapter 還嚴）|
-| 信心度：sandbox 級 | 信心度：ground truth |
-
-**結論**：v0.41.0 起本案例 deprecate 本地 docker vendor 模擬器。SDK MockProvider 是非 Amego provider 驗結構正確性的正解；Amego 用真實 sandbox 是 ground truth。
+**結論**：v0.41.0 起本案例 deprecate 本地 docker vendor 模擬器；Amego 用真實 sandbox。
 
 ---
 

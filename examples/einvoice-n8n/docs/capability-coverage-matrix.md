@@ -122,7 +122,7 @@ caller → failover workflow → svc /v1/route(capability, candidates[], op, inp
 - [ ] `__REPLACE_ME__*` 全部替換
 - [ ] Google Sheet `Audit` tab 結構含 `op` / `capability` / `modifiers` 欄位（v0.35.0 後）
 - [ ] PII / 商業會計法 10 年留存策略
-- [ ] `MockProvider` 在 `EINVOICE_MODE=PRODUCTION` 時拒絕
+- [ ] svc 在 `EINVOICE_MODE=PRODUCTION` 時拒絕任何非真實 provider 名稱（防 mock / stub 字串污染 production 路徑）
 - [ ] 高風險 capability（VOID_ALLOWANCE / SCHEDULED_ISSUE / FOREIGN_CURRENCY）建議過 `einvoice-capability-aware-gate`
 
 ---

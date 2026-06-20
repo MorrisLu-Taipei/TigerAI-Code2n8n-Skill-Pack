@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.0.5 — 從 Pack 文件 purge MockProvider 框架（never used，stop pretending）
+
+User feedback: 「MockProvider runner >> 不是要刪掉嗎>> 因為根本沒有用上」。MockProvider 一直被本 Pack 文件當作「我們的 backup solution」框架，但**從來沒實作 runner、從來沒實際呼叫過**。違反「沒用上就別說有用上」原則。
+
+### 6 個檔案 purge MockProvider 框架
+
+| 檔案 | 改動 |
+| --- | --- |
+| `examples/einvoice-n8n/README.md` | 刪 4 處：production checklist 的 `MockProvider 進正式` 行、`SDK 已附 MockProvider 完勝` 註腳、對比表「用真實 Amego sandbox + SDK MockProvider」改成單純「用真實 Amego sandbox」、結論段「SDK MockProvider 是非 Amego provider 驗結構正解」改成單純「Amego 用真實 sandbox」 |
+| `examples/einvoice-n8n/docs/capability-coverage-matrix.md` | L125 production checklist 「MockProvider 在 EINVOICE_MODE=PRODUCTION 時拒絕」改成更廣義的「svc 在 PRODUCTION 時拒絕任何非真實 provider 名稱」 |
+| `examples/einvoice-n8n/SECURITY-REVIEW.md` SEC-022 | 簡化：保留 meta-lesson（docker stub 自蓋是 over-engineering），刪 MockProvider 詳細比較（Zod schema / 狀態機 / failNext 等對照表），加上「對 Amego = 真實 sandbox / 對其他 4 家 = runtime 未驗、誠實揭露，不靠自蓋 stub 替代信心」honest scope |
+| `examples/einvoice-n8n/tests/v0.41-final-validation-report.md` §6 + §0 表 + §3 SEC entries | 同上簡化：保留 meta-lesson、刪 MockProvider 詳細介面對照、改寫 honest scope |
+| `docs/v1-claims-and-evidence.md` Row C6 + NC2 | Row C6 刪 MockProvider Evidence 行、加 docker stub 本質不可靠 4 點；NC2 刪「可用 SDK MockProvider 驗結構」末句，改成「runtime 由 caller 對接真實 credential 自行驗證」 |
+| `skills/tigerai/code2n8n-pipeline/SKILL.md` §8 | 一般化：「先指向 SDK MockProvider」→「先查 SDK 是否提供官方 mock 機制（任何名稱：MockProvider / MockClient / FakeAdapter / TestDouble 等）」；critic gate lexical regex 從 `MockProvider/mock provider/failNext/stub` 改成 `stub/simulator/mock`（更廣、更不專屬某一 SDK） |
+
+### 為何留 SKILL §8 內保留 1 處 MockProvider 字樣
+
+SKILL §8 留 `MockProvider / MockClient / FakeAdapter / TestDouble` 作為**範例名詞**列舉 — 這是 SOP 教學「SDK 可能提供的 mock 機制叫法」的範例，不是「我們的 solution」宣稱。未來 case study 啟動 Stage 8 時 main agent 看到這些字樣會去查 SDK README 是否提供類似命名的機制，符合 SOP 教學意圖。
+
+### V&V
+
+- `scripts/security-scan.mjs --glob "examples/**/*.workflow.json"` → 30 files, 0 error / 20 documented warning（regression-free）
+- 文件級 release；既有 runtime evidence stack 全部 PASS
+
 ## v1.0.4 — README 各語文版本全同步 v1.0（中文頂層 README + 3 個 English 副 README + tigerai-flagship INDEX 雙語）
 
 Goal-driven release: 「README 更新的相關內容 #1 全部重新檢查有沒有遺漏 #2 各語文版本需要更新」。Deep audit 後找到 5 處 gap 全補：

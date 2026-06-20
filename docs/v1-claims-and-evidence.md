@@ -80,12 +80,12 @@
 
 | 欄位 | 值 |
 | --- | --- |
-| **Claim** | 「v0.30.1 自製的 5 個 vendor router 是 over-engineering，SDK 早有 MockProvider 完勝；v0.41.0 起 deprecated」 |
+| **Claim** | 「v0.30.1 自製的 5 個 vendor router 是 over-engineering；v0.41.0 起 deprecated」 |
 | **Source** | SECURITY-REVIEW SEC-022 / v0.41 結案報告 §6 / SKILL `code2n8n-pipeline` §8 |
-| **Evidence — SDK 早有 MockProvider** | [SDK README §不需憑證即可測試](https://github.com/paid-tw/einvoice/blob/main/README.md) 明示 MockProvider 跑與真實轉接器相同的 Zod 驗證 + 狀態機 + capabilities 強制 + `failNext()` 失敗注入 |
-| **Evidence — docker stub 漂移** | SEC-021 暴露：我們自製的 Amego stub 沒有 capabilities 強制 — 跟真實 Amego SDK 對齊度差 |
-| **Fix shipped** | SKILL §8 sandbox build directive 加 Step 0「先讀 SDK README 看是否有 mock」+ critic gate lexical 偵測 `MockProvider`/`mock provider`/`failNext`/`stub` 字眼於 Stage 8 commit |
+| **Evidence — docker stub 本質不可靠** | (a) Zod schema 跟真實 SDK adapter 會漂移；(b) 狀態機沒實作；(c) capabilities 強制沒實作；(d) 需起 docker。SEC-021 暴露真實漂移：我們自製的 Amego stub 沒有 capabilities 強制檢查。 |
+| **Fix shipped** | SKILL §8 sandbox build directive 加 Step 0「先讀 SDK README 看是否提供 mock 機制」+ critic gate lexical 偵測 `stub`/`simulator`/`mock` 字眼於 Stage 8 commit |
 | **保留** | sandbox/src/routers/email.ts / sheet.ts / slack.ts — 跟 provider 解耦，解 SMTP/OAuth/workspace 離線測試 |
+| **Honest scope** | 對 Amego = 真實 sandbox（ground truth）；對其他 4 家 = 無公開測試帳號 → runtime 未驗、誠實揭露 |
 | **Commit sha** | v0.41.0=`5ce2d07` |
 
 ### Row C7 — 「Code 節點惡意 jsCode 偵測」
@@ -137,7 +137,7 @@
 ### NC2 — 「5 家 e-invoice provider 全部 runtime 驗過」
 
 - 不宣稱
-- 真實狀態：只 Amego 真實 sandbox runtime 通過 10/10；ECPay / ezPay / ezPay 跨境 / ezReceipt 無公開測試帳號 → runtime 未驗、結構層 OK；可用 SDK MockProvider 驗結構
+- 真實狀態：只 Amego 真實 sandbox runtime 通過 10/10；ECPay / ezPay / ezPay 跨境 / ezReceipt 無公開測試帳號 → runtime 未驗、結構層 OK；**runtime 由 caller 對接真實 credential 自行驗證**
 
 ### NC3 — 「npm 套件 100% 安全」
 
