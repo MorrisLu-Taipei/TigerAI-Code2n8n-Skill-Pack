@@ -1,5 +1,45 @@
 # Changelog
 
+## v1.0.8 — v1.0 release banner 收短（29 行 → 3 行；§1.6 evidence anchor 保留）
+
+User directive：「v1.0 release — evidence-first (per §1.6 lexical schema-before-claim rule) >> 短短兩三行就好」。
+
+### Banner 收短（README.md + README.zh.md 雙語對齊）
+
+從 29 行 V&V evidence + Claim + Honest scope 三大區塊收成 3 行：
+
+**Before**（v1.0.7）：
+- ### V&V evidence — gate v1：Layer 1 + Layer 2 詳列（10 capability / 11 invoice traces / SDK gap 細節...）
+- ### Claim — Path B end-to-end：三段 ✅ port / security review / runtime PASS
+- ### Honest scope：4 條 ❌ 不宣稱清單
+
+**After**（v1.0.8）：
+- 1 行：「V&V evidence」+ Path B PASS 一句話 + 3 個 evidence file 連結 + per A2A directive 引用
+- 1 行：「Honest scope」一句話收三條 disclaimer（einvoice CLEARED / Amego only / v1.x evolve）
+
+§1.6 evidence anchor 保留：
+- "evidence" 關鍵字 ✓
+- "per A2A directive" regex ✓
+- "PASS" status word ✓
+- v0.40 / v0.41 / claims-index 三條 evidence file 連結 ✓
+- README 下游所有受限字眼仍有此 banner 當前置 evidence 錨點
+
+### 順手清理
+
+v1.0.5 SEC-022 purge 漏網的 MockProvider 字樣同段已連帶清掉（在收短的 Honest scope 內）。
+
+### Self-scan
+
+- README.md 與 README.zh.md：銀句行數大減
+- Total hits：68 → 65（少了詳列裡的受限字眼出現次數）
+- Total violations：16 → **16**（**無 regression**）
+- 證明 banner 收短後 §1.6 evidence-first 機制照常運作
+
+### V&V
+
+- security-scan 30 files clean
+- 既有 runtime evidence stack 未動
+
 ## v1.0.7 — README「最新動態 + 致謝」段加入（中英雙版）
 
 User directive：「readme 上 最新說明 要放上 我們 最近把 https://github.com/paid-tw/einvoice 吸收進來轉成 n8n 並透過 驗證測試完成的說明與感謝」。

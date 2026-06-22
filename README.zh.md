@@ -8,35 +8,9 @@
 
 > ## 🚀 v1.0 release — evidence-first（依 §1.6 lexical schema-before-claim rule）
 >
-> ### V&V evidence — gate v1
+> **V&V evidence** — Path B PASS：Amego 10/10 SDK capability 對真實 Amego sandbox（11 張真實發票 trace）、22 SEC entries 管理、4-Tier 外部依賴安全 CI 自動 enforce。依 [A2A directive](docs/code2n8n-vv-a2a.md)：[v0.40 報告](examples/einvoice-n8n/tests/v0.40-amego-full-coverage-report.md) · [v0.41 結案](examples/einvoice-n8n/tests/v0.41-final-validation-report.md) · [claims index](docs/v1-claims-and-evidence.md)。
 >
-> **Layer 1（結構層）** — JSON parse PASS · `security-scan.mjs` 0 error / 20 documented warning · `live-roundtrip.mjs` 14/14 ok
->
-> **Layer 2（runtime — Path B einvoice 案例）**
-> - svc：`npm install` / `npm audit --audit-level=high` / `tsc --noEmit` PASS（exact pins、`npm ci` 鎖、CI fail-gate 自 v0.36.0 起綁定）
-> - 對**真實 vendor sandbox** end-to-end runtime：
->   - Amego SDK capability — **10/10 PASS**（ISSUE / VOID / ALLOWANCE / VOID_ALLOWANCE / QUERY / B2B / MIXED_TAX / QUERY_BY_ORDER_ID / CARRIER 手機條碼 / FOREIGN_CURRENCY）
->   - Amego DONATION（愛心碼）：**PARTIAL** — Amego raw response 不 echo donation 欄位（verification-method 限制，非 workflow bug）
->   - Amego SCHEDULED_ISSUE：SDK gap 已 capture 為 [SEC-021](examples/einvoice-n8n/SECURITY-REVIEW.md) — 透過 [`einvoice-capability-aware-gate`](examples/einvoice-n8n/workflows/einvoice-capability-aware-gate.workflow.json) mitigate；upstream issue 將提至 `paid-tw/einvoice`
-> - 真實 Amego sandbox 發票 trace（可在 Amego 後台查得）：`AA26515011` · `AA26515012` · `A1781885120033` · `AA26515015` · `AA26515016` · `AA26515018` · `AA26515019` · `AA26515020`（共 11 張）
-> - SEC entries：**20 ✅ FIXED · 1 OPEN（mitigated）· 1 documented meta-lesson** — 見 [SECURITY-REVIEW.md](examples/einvoice-n8n/SECURITY-REVIEW.md)
->
-> ### Claim — Path B 完整跑通（轉換 → 資安驗證 → 真實 sandbox runtime PASS）
->
-> 上述 evidence 在席（依 [V&V A2A directive](docs/code2n8n-vv-a2a.md)，11 國語言 machine-readable spec）。**v1.0 ship 內容**：
->
-> - ✅ **轉換** — [`@paid-tw/einvoice`](https://github.com/paid-tw/einvoice) TypeScript SDK（5 家供應商、MIG 4.0）→ 80 行 Hono `svc` + 14 個 n8n workflow
-> - ✅ **資安驗證** — 22 SEC entries + 4-Tier 外部依賴安全 CI 自動 enforce（[posture](docs/external-package-security-posture.md)、[A2A directive 英文](docs/external-dependency-security-a2a.md) / [中文](docs/external-dependency-security-a2a.zh.md)）
-> - ✅ **真實 sandbox runtime PASS** — Amego 10/10 SDK capability 對真實 Amego public sandbox PASS（runtime evidence 同上 Layer 2 區塊）
->
-> **結案報告**：[`tests/v0.41-final-validation-report.md`](examples/einvoice-n8n/tests/v0.41-final-validation-report.md) · **Claims & evidence index**：[`docs/v1-claims-and-evidence.md`](docs/v1-claims-and-evidence.md)
->
-> ### 誠實範圍（v1.0 **不**宣稱）
->
-> - ❌ **5 家發票供應商全 runtime PASS** — 僅 Amego 有真實 sandbox runtime 證據；ECPay / ezPay / ezPay 跨境 / ezReceipt 無公開 sandbox 帳號（結構層 OK；可用 SDK 內建 `MockProvider` 驗 — 見 [SEC-022](examples/einvoice-n8n/SECURITY-REVIEW.md)）
-> - ❌ **所有 case study 都可上線** — 只 einvoice 案例 CLEARED；GW admin / LINE cloud 結構層 PASS、需 caller credentials；LINE on-prem 標 **DO NOT DEPLOY AS-IS**
-> - ❌ **npm 套件 100% 安全** — 4-Tier 治理擋住已知失敗模式；新型 supply chain 攻擊永遠可能繞過；本 Pack 提供 defense-in-depth，非 100% 保證
-> - ❌ **v1.0 = 完成** — v1.0 = Path B 第一次完整跑通 + 全部 SEC entries 公開 + 治理 SOP 落地。v1.x 持續演進
+> **誠實範圍** — 只 einvoice 案例 CLEARED；只 Amego 有真實 sandbox runtime 證據（其他 4 家無公開測試帳號、runtime 未驗）；v1.0 = Path B 第一次完整跑通，v1.x 持續演進。
 
 > **Code2n8n 的定位**：AI Coding（Claude Code / Codex / Antigravity）擅長把程式「寫出來」；n8n 擅長把程式變成「企業管得住」的流程資產。這個 pack 就是兩者之間的橋 — **描述一個需求，或 指向一個既有系統**（Apps Script / Express / Lambda / Docker stack），產出 IT、營運、主管都看得懂、稽核得了、交接得下去、跨系統治理得來的 n8n workflow。
 

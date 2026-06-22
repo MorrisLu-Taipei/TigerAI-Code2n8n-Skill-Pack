@@ -8,35 +8,9 @@
 
 > ## 🚀 v1.0 release — evidence-first (per §1.6 lexical schema-before-claim rule)
 >
-> ### V&V evidence — gate v1
+> **V&V evidence** — Path B PASS: Amego 10/10 SDK capability against real Amego sandbox (11 invoice traces), 22 SEC entries managed, 4-Tier external-dependency security CI-enforced. Per [A2A directive](docs/code2n8n-vv-a2a.md): [v0.40 report](examples/einvoice-n8n/tests/v0.40-amego-full-coverage-report.md) · [v0.41 closing](examples/einvoice-n8n/tests/v0.41-final-validation-report.md) · [claims index](docs/v1-claims-and-evidence.md).
 >
-> **Layer 1 (structural)** — JSON parse PASS · `security-scan.mjs` 0 error / 20 documented warning · `live-roundtrip.mjs` 14/14 ok
->
-> **Layer 2 (runtime — Path B einvoice case)**
-> - svc: `npm install` / `npm audit --audit-level=high` / `tsc --noEmit` PASS (exact pins, `npm ci`-locked, CI fail-gate since v0.36.0)
-> - End-to-end runtime against **real vendor sandbox**:
->   - Amego SDK capability — **10/10 PASS** (ISSUE / VOID / ALLOWANCE / VOID_ALLOWANCE / QUERY / B2B / MIXED_TAX / QUERY_BY_ORDER_ID / CARRIER mobile barcode / FOREIGN_CURRENCY)
->   - Amego DONATION (愛心碼): **PARTIAL** — Amego raw response does not echo the donation field (verification-method limitation, not a workflow bug)
->   - Amego SCHEDULED_ISSUE: SDK gap captured as [SEC-021](examples/einvoice-n8n/SECURITY-REVIEW.md) — mitigated via [`einvoice-capability-aware-gate`](examples/einvoice-n8n/workflows/einvoice-capability-aware-gate.workflow.json); upstream issue to be filed at `paid-tw/einvoice`
-> - Real Amego sandbox invoice traces (queryable in Amego back-office): `AA26515011`, `AA26515012`, `A1781885120033`, `AA26515015`, `AA26515016`, `AA26515018`, `AA26515019`, `AA26515020` (11 traces total)
-> - SEC entries: **20 ✅ FIXED · 1 OPEN (mitigated) · 1 documented meta-lesson** — see [SECURITY-REVIEW.md](examples/einvoice-n8n/SECURITY-REVIEW.md)
->
-> ### Claim — Path B end-to-end (port → security review → real-vendor-sandbox runtime PASS)
->
-> Evidence above is in place (per [V&V A2A directive](docs/code2n8n-vv-a2a.md), 11-language machine-readable spec). **v1.0 ships with**:
->
-> - ✅ **Port** — [`@paid-tw/einvoice`](https://github.com/paid-tw/einvoice) TypeScript SDK (5 providers, MIG 4.0) → 80-line Hono `svc` + 14 n8n workflows
-> - ✅ **Security review** — 22 SEC entries + 4-Tier external-dependency security CI auto-enforced ([posture](docs/external-package-security-posture.md), [A2A directive EN](docs/external-dependency-security-a2a.md) / [ZH](docs/external-dependency-security-a2a.zh.md))
-> - ✅ **Real-vendor-sandbox runtime PASS** — Amego 10/10 SDK capability against real Amego public sandbox (runtime evidence in Layer 2 block above)
->
-> **Closing report**: [`tests/v0.41-final-validation-report.md`](examples/einvoice-n8n/tests/v0.41-final-validation-report.md) · **Claims & evidence index**: [`docs/v1-claims-and-evidence.md`](docs/v1-claims-and-evidence.md)
->
-> ### Honest scope (what v1.0 does **not** claim)
->
-> - ❌ **All 5 e-invoice providers runtime-PASS** — only Amego has real-sandbox runtime evidence; ECPay / ezPay / ezPay cross-border / ezReceipt lack public sandbox accounts (structural OK; can be checked with the SDK's built-in `MockProvider` — see [SEC-022](examples/einvoice-n8n/SECURITY-REVIEW.md))
-> - ❌ **All case studies enterprise-deployable** — only einvoice case CLEARED; GW admin / LINE cloud are structural-PASS pending caller credentials; LINE on-prem is marked **DO NOT DEPLOY AS-IS**
-> - ❌ **npm dependencies are 100% safe** — 4-Tier governance blocks known failure modes; novel supply-chain attacks can always evade any single tool; the Pack offers defense-in-depth, not a 100% guarantee
-> - ❌ **v1.0 is finished** — v1.0 = Path B's first end-to-end pass + all SEC entries public + governance SOPs landed. v1.x will continue to evolve
+> **Honest scope** — only einvoice case CLEARED; only Amego has real-sandbox runtime evidence (other 4 providers lack public sandbox accounts, runtime untested); v1.0 = Path B's first end-to-end pass, v1.x continues to evolve.
 
 > **The Code2n8n positioning**: AI Coding (Claude Code / Codex / Antigravity) is great at *writing* code. n8n is great at making code *manageable by an enterprise*. This pack is the bridge — **describe a requirement, *or* point at an existing system** (Apps Script / Express / Lambda / Docker stack), and get a runnable n8n workflow that IT, operations, and managers can all read, audit, hand off, and govern.
 
