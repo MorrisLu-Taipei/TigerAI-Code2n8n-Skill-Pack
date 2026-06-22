@@ -49,6 +49,22 @@
 >
 > The directive gates when you may use the words "validated" / "tested" / "production-ready", what tools you must invoke, what evidence schema you must emit, and what phrases are forbidden until the gate passes. Skipping it produced the v0.27.0 incident captured in [`examples/einvoice-n8n/REFLECTION.md`](examples/einvoice-n8n/REFLECTION.md). Human reviewers use [`docs/code2n8n-vv-checklist.md`](docs/code2n8n-vv-checklist.md) instead.
 
+## 🆕 What's new — v1.0 absorbed paid-tw/einvoice into n8n + thanks
+
+We recently ported the upstream SDK [`paid-tw/einvoice`](https://github.com/paid-tw/einvoice) (Taiwan unified e-invoice SDK, MOF MIG 4.0 spec, 5 providers: Amego / ECPay / ezPay / ezPay cross-border / ezReceipt) into n8n workflows and completed Path B's three legs:
+
+- ✅ **Port**: SDK → 80-line Hono `svc` wrapper + 14 n8n workflows
+- ✅ **Security review**: 22 SEC entries (20 ✅ FIXED + 1 OPEN mitigated + 1 documented) + 4-Tier external-dependency security CI auto-enforced
+- ✅ **Real-vendor-sandbox runtime PASS**: Amego 10/10 SDK capability against real Amego public sandbox — 11 real invoice traces queryable in Amego back-office (`AA26515011` ~ `AA26515020`)
+
+V&V evidence (per the v1.0 release banner above and the [A2A directive](docs/code2n8n-vv-a2a.md)): see [`examples/einvoice-n8n/tests/v0.40-amego-full-coverage-report.md`](examples/einvoice-n8n/tests/v0.40-amego-full-coverage-report.md) and the closing report [`tests/v0.41-final-validation-report.md`](examples/einvoice-n8n/tests/v0.41-final-validation-report.md).
+
+### 🙏 Thanks to [`paid-tw/einvoice`](https://github.com/paid-tw/einvoice) maintainers
+
+The MIT license made this v1.0 milestone possible — it let the Pack wrap the SDK into a svc + n8n governance layer for public release. The Pack consumes the SDK via `npm install` with exact pins and **does not vendor source** (per [SEC-017](examples/einvoice-n8n/SECURITY-REVIEW.md)).
+
+We're also contributing an upstream-issue draft back: [`docs/upstream-issues/paid-tw-einvoice-sec-021-scheduled-issue.md`](docs/upstream-issues/paid-tw-einvoice-sec-021-scheduled-issue.md) — a real-sandbox finding that the SDK's `capabilities[]` declaration vs `issue()` runtime behavior is inconsistent (SCHEDULED_ISSUE is accepted on Amego despite not being listed), with a reproducer and proposed fix. The Pack already mitigates this with the [`einvoice-capability-aware-gate`](examples/einvoice-n8n/workflows/einvoice-capability-aware-gate.workflow.json) workflow, but an SDK-level guard would be more reliable for all consumers.
+
 ### What this Pack is — and what it is not
 
 | ✅ This Pack **is** | ⛔ This Pack **is not** |

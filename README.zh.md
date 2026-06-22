@@ -49,6 +49,22 @@
 >
 > 指令明確規範：什麼時候才可以說「驗證通過 / 已測試 / 可上線」、要跑哪些工具、要產什麼 evidence schema、哪些詞彙在通過 gate 前是禁用的。跳過這個 gate 就是 v0.27.0 出事的原因，紀錄在 [`examples/einvoice-n8n/REFLECTION.md`](examples/einvoice-n8n/REFLECTION.md)。**人類** reviewer 改讀 [`docs/code2n8n-vv-checklist.md`](docs/code2n8n-vv-checklist.md)。
 
+## 🆕 最新動態 — v1.0 把 paid-tw/einvoice 吸收進 n8n + 致謝
+
+最近 Pack 把上游 SDK [`paid-tw/einvoice`](https://github.com/paid-tw/einvoice)（台灣統一電子發票 SDK，財政部 MIG 4.0 規格，5 家供應商：Amego / ECPay / ezPay / ezPay 跨境 / ezReceipt）完整移植成 n8n workflow，並完成 Path B 三段：
+
+- ✅ **轉換**：SDK → 80 行 Hono `svc` 包裝 + 14 個 n8n workflow
+- ✅ **資安審查**：22 個 SEC entry（20 ✅ FIXED + 1 OPEN mitigated + 1 documented）+ 4-Tier 外部依賴安全 CI 自動 enforce
+- ✅ **真實 vendor sandbox runtime PASS**：Amego 10/10 SDK capability 對真實 Amego public sandbox 通過 — 11 張真實發票 trace 可在 Amego 後台查得（`AA26515011` ~ `AA26515020`）
+
+V&V 證據（依上方 v1.0 release banner 與 [A2A directive](docs/code2n8n-vv-a2a.md)）：詳見 [`examples/einvoice-n8n/tests/v0.40-amego-full-coverage-report.md`](examples/einvoice-n8n/tests/v0.40-amego-full-coverage-report.md) + 結案報告 [`tests/v0.41-final-validation-report.md`](examples/einvoice-n8n/tests/v0.41-final-validation-report.md)。
+
+### 🙏 致謝 [`paid-tw/einvoice`](https://github.com/paid-tw/einvoice) 維護者
+
+MIT 授權讓本 Pack 能把 SDK 包成 svc + n8n 治理層對外發布 — 是 v1.0 milestone 能成立的關鍵基礎。本 Pack 透過 `npm install` exact-pin 引用該 SDK，**不 vendoring 原始碼**（依 [SEC-017](examples/einvoice-n8n/SECURITY-REVIEW.md)）。
+
+我們也回饋一個 upstream issue draft 給 SDK 維護者：[`docs/upstream-issues/paid-tw-einvoice-sec-021-scheduled-issue.md`](docs/upstream-issues/paid-tw-einvoice-sec-021-scheduled-issue.md) — 真實 sandbox 測試時發現的 SDK `capabilities[]` 宣告與 `issue()` runtime 行為不一致問題（SCHEDULED_ISSUE 在 Amego 不支援卻被接受），含 reproducer + 提議的 fix。Pack 端已 mitigate via [`einvoice-capability-aware-gate`](examples/einvoice-n8n/workflows/einvoice-capability-aware-gate.workflow.json) workflow，但建議 SDK 層補上強制檢查。
+
 ### 本 Pack 是 / 不是什麼
 
 | ✅ 本 Pack **是** | ⛔ 本 Pack **不是** |

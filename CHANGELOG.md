@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.0.7 — README「最新動態 + 致謝」段加入（中英雙版）
+
+User directive：「readme 上 最新說明 要放上 我們 最近把 https://github.com/paid-tw/einvoice 吸收進來轉成 n8n 並透過 驗證測試完成的說明與感謝」。
+
+### 新加段落（README.zh.md + README.md 雙語對齊）
+
+在 v1.0 release banner 之後、`本 Pack 是 / 不是什麼` section 之前，加入 **「🆕 最新動態 — v1.0 把 paid-tw/einvoice 吸收進 n8n + 致謝」** 段落：
+
+1. **明示三段 Path B 完成度**（轉換 / 資安審查 / 真實 sandbox runtime）含具體數字（80 行 svc / 14 workflow / 22 SEC entries / Amego 10/10 / 11 張真實發票 trace）
+2. **V&V evidence 連結**指回 v0.40 + v0.41 報告（依 §1.6 — 受限字眼前已有 evidence 連結）
+3. **🙏 致謝段** — 感謝 [`paid-tw/einvoice`](https://github.com/paid-tw/einvoice) 維護者：MIT 授權是 v1.0 milestone 成立關鍵；本 Pack 透過 `npm install` exact-pin 引用，不 vendoring 原始碼
+4. **upstream issue 回饋**：明示 Pack 已 ship `docs/upstream-issues/paid-tw-einvoice-sec-021-scheduled-issue.md` draft 給 SDK 維護者（SEC-021 SDK gap：SCHEDULED_ISSUE on Amego 不該被接受卻被接受），含 reproducer + 提議 fix。本 Pack 端已透過 `einvoice-capability-aware-gate` workflow mitigate，但建議 SDK 層加強制檢查更可靠
+
+### Self-scan
+
+- README.md 與 README.zh.md 新段落均落在 v1.0 banner 後的 evidence 範圍內（per A2A directive 與多個 SECURITY-REVIEW / v0.40 / v0.41 連結）
+- Total self-scan violations 維持 16（與 v1.0.6 同 — 新段落 0 regression）
+
+### V&V
+
+- security-scan 30 files clean（regression-free）
+- 既有 runtime evidence stack 未動
+
 ## v1.0.6 — Goal「do it all」收尾：CI 3 bugs 修 + 10 GitHub Releases backlog + uncommitted 全清 + memory 新規 + upstream issue draft
 
 Goal-driven release：「do it all」— 把 v1.0.5 後盤點的 9 個剩餘項目一次處理完。
