@@ -1,0 +1,147 @@
+{
+  "id": "GenM63",
+  "name": "海巡 Threads 話題產回覆草稿",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "⚠️ 架構範本（未接 key）\n\n需 IG/Threads API 或公開搜尋來源 + Token。\n分析(Ollama)免費。",
+        "height": 320,
+        "width": 380,
+        "color": 4
+      },
+      "id": "n-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        180,
+        100
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "n-manual",
+      "name": "When clicking Execute",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "options": {},
+        "method": "GET",
+        "url": "https://graph.threads.net/v1.0/keyword_search?q=YOUR_TOPIC"
+      },
+      "id": "n-fetch",
+      "name": "Fetch (API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=JSON.stringify($input.first().json).slice(0,3000);\nconst prompt='你是社群經營者。從以下 Threads 貼文挑出值得互動的，並各給一句回覆草稿。\\n\\n'+d;\nreturn [{json:{prompt}}];"
+      },
+      "id": "n-prep",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "timeout": 180000
+        },
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen2.5:latest', messages: [ { role: 'system', content: '你是台灣人，一律使用台灣繁體中文與台灣慣用語回覆，絕對不要出現任何簡體字或中國用語。' }, { role: 'user', content: $json.prompt } ], stream: false }) }}"
+      },
+      "id": "n-ollama",
+      "name": "Summarize with Ollama",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nlet v = '';\ntry { v = (data.message && data.message.content) || (data.content && data.content[0] && data.content[0].text) || data.response || ''; } catch (e) {}\nif (!v) v = JSON.stringify(data);\nreturn [{ json: { result: v } }];"
+      },
+      "id": "n-result",
+      "name": "Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        460
+      ]
+    }
+  ],
+  "connections": {
+    "When clicking Execute": {
+      "main": [
+        [
+          {
+            "node": "Fetch (API)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch (API)": {
+      "main": [
+        [
+          {
+            "node": "Build Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Prompt": {
+      "main": [
+        [
+          {
+            "node": "Summarize with Ollama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize with Ollama": {
+      "main": [
+        [
+          {
+            "node": "Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {},
+  "tags": []
+}

@@ -1,0 +1,147 @@
+{
+  "id": "ArchYouTube06",
+  "name": "【架構範本】YouTube 影片數據 → AI 分析 (未接 key)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "⚠️ 架構範本（未接 key）\n\n「Fetch YouTube Stats」要填影片 ID + YouTube Data API Key。\n好消息：公開影片數據只需 API Key（不用 OAuth），在 Google Cloud Console 免費開即可。\n\n分析（Ollama）是免費本機的，結果在「Result」節點看。",
+        "height": 300,
+        "width": 380,
+        "color": 4
+      },
+      "id": "node-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        180,
+        120
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "node-manual",
+      "name": "When clicking Execute",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet&id=YOUR_VIDEO_ID&key=YOUR_API_KEY",
+        "options": {}
+      },
+      "id": "node-fetch",
+      "name": "Fetch YouTube Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = JSON.stringify($input.first().json).slice(0, 3000);\nconst prompt = '以下是 YouTube 影片數據（JSON，含觀看/按讚/留言數與標題）。請用繁體中文：1) 摘要表現 2) 推測受歡迎或不足的原因 3) 下支影片建議。\\n\\n數據：\\n' + d;\nreturn [{ json: { prompt } }];"
+      },
+      "id": "node-prompt",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen2.5:latest', messages: [ { role: 'system', content: '你是台灣人，一律使用台灣繁體中文與台灣慣用語回覆，絕對不要出現任何簡體字或中國用語。' }, { role: 'user', content: $json.prompt } ], stream: false }) }}",
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "id": "node-ollama",
+      "name": "Analyze with Ollama",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nlet out = '';\ntry { out = (data.message && data.message.content) || ''; } catch (e) {}\nif (!out) out = JSON.stringify(data);\nreturn [{ json: { result: out } }];"
+      },
+      "id": "node-result",
+      "name": "Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        460
+      ]
+    }
+  ],
+  "connections": {
+    "When clicking Execute": {
+      "main": [
+        [
+          {
+            "node": "Fetch YouTube Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch YouTube Stats": {
+      "main": [
+        [
+          {
+            "node": "Build Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Prompt": {
+      "main": [
+        [
+          {
+            "node": "Analyze with Ollama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze with Ollama": {
+      "main": [
+        [
+          {
+            "node": "Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {},
+  "tags": []
+}

@@ -1,0 +1,105 @@
+{
+  "id": "WkSensitiveChk03",
+  "name": "檢查社群貼文敏感字 (Sensitive Word Checker · 本機 Ollama)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "node-manual",
+      "name": "When clicking Execute",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const postText = '（把這裡換成你要檢查的貼文草稿）';\nconst prompt = '你是台灣廣告法規與社群合規審查員。檢查以下貼文是否有易違規或誇大字眼：絕對化用詞（最、第一、No.1、唯一、頂級、100%、永久）、療效或醫療宣稱、快速瘦身暗示、誇大不實。\\n逐條列出：問題字 → 風險原因 → 建議改法。若完全沒問題，回覆「✅ 沒有發現明顯風險字詞」。用繁體中文。\\n\\n貼文：\\n' + postText;\nreturn [{ json: { postText, prompt } }];"
+      },
+      "id": "node-input",
+      "name": "Input (edit me)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen2.5:latest', messages: [ { role: 'system', content: '你是台灣人，一律使用台灣繁體中文與台灣慣用語回覆，絕對不要出現任何簡體字或中國用語。' }, { role: 'user', content: $json.prompt } ], stream: false }) }}",
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "id": "node-ollama",
+      "name": "Summarize with Ollama",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nlet out = '';\ntry { out = (data.message && data.message.content) || (data.content && data.content[0] && data.content[0].text) || data.response || ''; } catch (e) {}\nif (!out) out = JSON.stringify(data);\nreturn [{ json: { result: out } }];"
+      },
+      "id": "node-result",
+      "name": "Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "When clicking Execute": {
+      "main": [
+        [
+          {
+            "node": "Input (edit me)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input (edit me)": {
+      "main": [
+        [
+          {
+            "node": "Summarize with Ollama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize with Ollama": {
+      "main": [
+        [
+          {
+            "node": "Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {},
+  "tags": []
+}

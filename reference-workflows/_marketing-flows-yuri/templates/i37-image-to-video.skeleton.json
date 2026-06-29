@@ -1,0 +1,104 @@
+{
+  "id": "GenI37",
+  "name": "靜態圖生成影片",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "⚠️ 架構範本（未接 key）\n\n影像/影片生成需付費 API（OpenAI Images / Veo 等）；\n或改接你本機的 ComfyUI / Stable Diffusion（免費，需另設）。\n此處示意呼叫結構。",
+        "height": 320,
+        "width": 380,
+        "color": 4
+      },
+      "id": "n-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        180,
+        100
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "n-manual",
+      "name": "When clicking Execute",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const topic='（描述你要的圖/影片）';\nconst prompt=topic;\nreturn [{json:{topic,prompt}}];"
+      },
+      "id": "n-input",
+      "name": "Input (edit me)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "options": {},
+        "method": "POST",
+        "url": "https://YOUR_VIDEO_API/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ prompt: $json.prompt }) }}"
+      },
+      "id": "n-gen",
+      "name": "Generate (API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        460
+      ]
+    }
+  ],
+  "connections": {
+    "When clicking Execute": {
+      "main": [
+        [
+          {
+            "node": "Input (edit me)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input (edit me)": {
+      "main": [
+        [
+          {
+            "node": "Generate (API)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {},
+  "tags": []
+}

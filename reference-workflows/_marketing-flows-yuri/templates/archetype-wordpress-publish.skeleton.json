@@ -1,0 +1,152 @@
+{
+  "id": "ArchWordPress07",
+  "name": "【架構範本】AI 產文 → 發布 WordPress 草稿 (未接 key)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "⚠️ 架構範本（未接 key）\n\n「Post to WordPress」要填你的站網址 + 帳號 + 應用程式密碼（WP 後台→使用者→Application Passwords）。\n用的是 WordPress REST API（Basic 認證）。\n預設發成 draft（草稿），確認沒問題再改 publish。\n\n產文（Ollama）是免費本機的。",
+        "height": 320,
+        "width": 380,
+        "color": 4
+      },
+      "id": "node-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        180,
+        120
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "node-manual",
+      "name": "When clicking Execute",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const topic = '（換成你的文章主題）';\nconst prompt = '你是內容編輯。根據以下主題寫一篇 300-500 字的繁體中文部落格文章，包含一個吸引人的標題（第一行用「標題：」開頭）：\\n\\n主題：' + topic;\nreturn [{ json: { topic, prompt } }];"
+      },
+      "id": "node-input",
+      "name": "Input (edit me)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen2.5:latest', messages: [ { role: 'system', content: '你是台灣人，一律使用台灣繁體中文與台灣慣用語回覆，絕對不要出現任何簡體字或中國用語。' }, { role: 'user', content: $json.prompt } ], stream: false }) }}",
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "id": "node-ollama",
+      "name": "Generate with Ollama",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nlet text = '';\ntry { text = (data.message && data.message.content) || ''; } catch (e) {}\nif (!text) text = JSON.stringify(data);\nlet title = 'AI 草稿';\nconst m = text.match(/標題：(.+)/);\nif (m) { title = m[1].trim(); text = text.replace(m[0], '').trim(); }\nreturn [{ json: { title, content: text } }];"
+      },
+      "id": "node-extract",
+      "name": "Extract Title & Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR_SITE.com/wp-json/wp/v2/posts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ title: $json.title, content: $json.content, status: 'draft' }) }}",
+        "options": {}
+      },
+      "id": "node-wp",
+      "name": "Post to WordPress",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        460
+      ]
+    }
+  ],
+  "connections": {
+    "When clicking Execute": {
+      "main": [
+        [
+          {
+            "node": "Input (edit me)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input (edit me)": {
+      "main": [
+        [
+          {
+            "node": "Generate with Ollama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate with Ollama": {
+      "main": [
+        [
+          {
+            "node": "Extract Title & Body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Title & Body": {
+      "main": [
+        [
+          {
+            "node": "Post to WordPress",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {},
+  "tags": []
+}

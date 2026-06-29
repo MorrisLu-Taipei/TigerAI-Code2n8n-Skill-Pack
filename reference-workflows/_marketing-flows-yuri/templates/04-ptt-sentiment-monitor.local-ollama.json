@@ -1,0 +1,206 @@
+{
+  "id": "WkPttMonitor04",
+  "name": "PTT 輿情監測 (PTT Sentiment Monitor · 本機 Ollama)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "node-schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const board = 'Tech_Job';\nconst keyword = 'AI';\nconst url = 'https://www.ptt.cc/bbs/' + board + '/search?q=' + encodeURIComponent(keyword);\nreturn [{ json: { board, keyword, url } }];"
+      },
+      "id": "node-input",
+      "name": "Input (edit me)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "over18=1"
+            },
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-fetch",
+      "name": "Fetch PTT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const j = $input.first().json;\nconst html = j.data || j.body || '';\nconst re = /<div class=\\x22title\\x22>\\s*<a href=\\x22([^\\x22]+)\\x22>([^<]+)<\\/a>/g;\nconst items = []; let m;\nwhile ((m = re.exec(html)) !== null) {\n  const title = m[2].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();\n  items.push({ title, link: 'https://www.ptt.cc' + m[1] });\n  if (items.length >= 20) break;\n}\nconst meta = $('Input (edit me)').first().json;\nconst list = items.map((n, i) => (i + 1) + '. ' + n.title).join('\\n');\nconst prompt = '以下是 PTT「' + meta.board + '」版搜尋「' + meta.keyword + '」的最新討論標題。請用繁體中文整理成輿情報告：\\n1) 主要討論什麼（2-4 個重點）\\n2) 整體風向與情緒（正面/負面/中立，並簡述）\\n3) 值得品牌注意的點\\n\\n標題清單：\\n' + (list || '（這次沒抓到標題，可能是看板或關鍵字需調整）');\nreturn [{ json: { count: items.length, prompt } }];"
+      },
+      "id": "node-parse",
+      "name": "Parse PTT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen2.5:latest', messages: [ { role: 'system', content: '你是台灣人，一律使用台灣繁體中文與台灣慣用語回覆，絕對不要出現任何簡體字或中國用語。' }, { role: 'user', content: $json.prompt } ], stream: false }) }}",
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "id": "node-ollama",
+      "name": "Summarize with Ollama",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nlet summary = '';\ntry { summary = (data.message && data.message.content) || (data.content && data.content[0] && data.content[0].text) || data.response || ''; } catch (e) {}\nif (!summary) summary = JSON.stringify(data);\nreturn [{ json: { summary } }];"
+      },
+      "id": "node-extract",
+      "name": "Extract Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://discord.com/api/webhooks/REPLACE_WITH_YOUR_WEBHOOK_URL",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: ('🗣️ PTT 輿情報告\\n\\n' + ($json.summary || '')).slice(0, 1900) }) }}",
+        "options": {}
+      },
+      "id": "node-discord",
+      "name": "Send to Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1560,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Input (edit me)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input (edit me)": {
+      "main": [
+        [
+          {
+            "node": "Fetch PTT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch PTT": {
+      "main": [
+        [
+          {
+            "node": "Parse PTT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse PTT": {
+      "main": [
+        [
+          {
+            "node": "Summarize with Ollama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize with Ollama": {
+      "main": [
+        [
+          {
+            "node": "Extract Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Result": {
+      "main": [
+        [
+          {
+            "node": "Send to Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {},
+  "tags": []
+}

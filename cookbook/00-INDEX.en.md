@@ -32,6 +32,7 @@ Page contents:
 | 06 | [Error retry pattern](06-error-retry-pattern.en.md) | Flaky API needs retry / failure alert | wait, errorTrigger, slack |
 | 07 | [Multi-source merge](07-multi-source-merge.en.md) | Pull from multiple APIs and merge | merge, set, splitInBatches |
 | 08 | [Loop batch processing](08-loop-batch-processing.en.md) | Same processing per item over a batch | splitInBatches, code, ifEmpty |
+| 09 | [Raw HTTP LLM call (portable)](09-raw-http-llm-portable.en.md) | Call an LLM without langchain; swap Ollama↔Claude↔OpenAI in one node | httpRequest, code |
 
 ---
 
@@ -47,6 +48,7 @@ Process uploaded files                  →  05
 Need retry / failure alert              →  06
 Pull from multiple sources and merge    →  07
 Apply same processing per item          →  08
+Call an LLM but stay provider-swappable →  09
 ```
 
 > Can't find a fit? Combine. E.g. "daily fetch 100 records → AI classify → write DB" = combo of 02 + 04 + 08 + 03. Just include the relevant Layer 1 blocks.

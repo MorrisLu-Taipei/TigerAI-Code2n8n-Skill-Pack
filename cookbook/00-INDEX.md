@@ -32,6 +32,7 @@
 | 06 | [錯誤處理與重試模式](06-error-retry-pattern.md) | API 不穩需要 retry / 失敗回報 | wait, errorTrigger, slack |
 | 07 | [多來源合併](07-multi-source-merge.md) | 同時從多 API 拉資料合併輸出 | merge, set, splitInBatches |
 | 08 | [迴圈批次處理](08-loop-batch-processing.md) | 批次處理大量項目（每筆/每頁）| splitInBatches, code, ifEmpty |
+| 09 | [HTTP 直呼 LLM（可攜換 provider）](09-raw-http-llm-portable.md) | 不綁 langchain 節點，Ollama↔Claude↔OpenAI 一鍵換 | httpRequest, code |
 
 ---
 
@@ -47,6 +48,7 @@
 需要重試或失敗通知              →  06
 要從多個地方取資料合併          →  07
 要對「每一筆」做一樣的處理      →  08
+要叫 LLM 又想能換 provider       →  09
 ```
 
 > 找不到？混合使用。例如「每天定時抓 100 筆 → AI 分類 → 寫 DB」= 02 + 04 + 08 + 03 的組合。把對應的 Layer 1 區塊全部寫進你的 sticky note 即可。

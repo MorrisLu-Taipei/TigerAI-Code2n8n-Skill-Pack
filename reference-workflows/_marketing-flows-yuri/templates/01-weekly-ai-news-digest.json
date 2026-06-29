@@ -1,0 +1,157 @@
+{
+  "id": "WkAiNewsDigest01",
+  "name": "每週 AI 新聞摘要 (Weekly AI News Digest)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "cronExpression", "expression": "0 9 * * 1" }
+          ]
+        }
+      },
+      "id": "node-schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 400]
+    },
+    {
+      "parameters": {
+        "url": "https://news.google.com/rss/search?q=AI&hl=zh-TW&gl=TW&ceid=TW:zh-Hant",
+        "options": {}
+      },
+      "id": "node-rss-google",
+      "name": "RSS Google News",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [480, 280]
+    },
+    {
+      "parameters": {
+        "url": "https://tw.news.yahoo.com/rss/",
+        "options": {}
+      },
+      "id": "node-rss-yahoo",
+      "name": "RSS Yahoo News",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [480, 520]
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 2
+      },
+      "id": "node-merge",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [720, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const seen = new Set();\nconst items = [];\nfor (const it of $input.all()) {\n  const j = it.json;\n  const title = (j.title || '').trim();\n  const link = j.link || j.url || '';\n  if (!title || seen.has(title)) continue;\n  seen.add(title);\n  items.push({ title, link });\n  if (items.length >= 15) break;\n}\nconst newsText = items.map((n, i) => (i + 1) + '. ' + n.title + ' — ' + n.link).join('\\n');\nconst prompt = '你是一位科技新聞編輯。以下是本週多則新聞標題與連結，請用繁體中文整理成一份「每週 AI 新聞摘要」：挑出最重要的 5-7 則，每則用一句話說明重點，最後再給 2 句整體趨勢總結。\\n\\n' + newsText;\nreturn [{ json: { count: items.length, items, newsText, prompt } }];"
+      },
+      "id": "node-prepare",
+      "name": "Prepare News Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1500, messages: [ { role: 'user', content: $json.prompt } ] }) }}",
+        "options": {}
+      },
+      "id": "node-claude",
+      "name": "Summarize with Claude",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1160, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nlet summary = '';\ntry { summary = data.content[0].text; } catch (e) { summary = JSON.stringify(data); }\nreturn [{ json: { summary } }];"
+      },
+      "id": "node-extract",
+      "name": "Extract Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1380, 400]
+    },
+    {
+      "parameters": {
+        "fromEmail": "you@example.com",
+        "toEmail": "you@example.com",
+        "subject": "📰 每週 AI 新聞摘要",
+        "emailFormat": "text",
+        "text": "={{ $json.summary }}",
+        "options": {}
+      },
+      "id": "node-email",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1600, 400]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          { "node": "RSS Google News", "type": "main", "index": 0 },
+          { "node": "RSS Yahoo News", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "RSS Google News": {
+      "main": [
+        [ { "node": "Merge", "type": "main", "index": 0 } ]
+      ]
+    },
+    "RSS Yahoo News": {
+      "main": [
+        [ { "node": "Merge", "type": "main", "index": 1 } ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [ { "node": "Prepare News Text", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Prepare News Text": {
+      "main": [
+        [ { "node": "Summarize with Claude", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Summarize with Claude": {
+      "main": [
+        [ { "node": "Extract Summary", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Extract Summary": {
+      "main": [
+        [ { "node": "Send Email", "type": "main", "index": 0 } ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": {},
+  "tags": []
+}

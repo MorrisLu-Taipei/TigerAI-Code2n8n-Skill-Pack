@@ -1,0 +1,150 @@
+{
+  "id": "GenE18",
+  "name": "寄出指定名單 EDM",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "⚠️ 架構範本（未接 key）\n\n需 SMTP 憑證 + 收件名單來源（Sheets/CSV）。\n內容生成(Ollama)免費。",
+        "height": 320,
+        "width": 380,
+        "color": 4
+      },
+      "id": "n-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        180,
+        100
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "n-manual",
+      "name": "When clicking Execute",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const topic='（換成你的主題或素材）';\nconst prompt='你是 EDM 文案。根據主題寫一封行銷電子報（繁中）：\\n\\n主題：'+topic;\nreturn [{json:{topic,prompt}}];"
+      },
+      "id": "n-input",
+      "name": "Input (edit me)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "timeout": 180000
+        },
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen2.5:latest', messages: [ { role: 'system', content: '你是台灣人，一律使用台灣繁體中文與台灣慣用語回覆，絕對不要出現任何簡體字或中國用語。' }, { role: 'user', content: $json.prompt } ], stream: false }) }}"
+      },
+      "id": "n-ollama",
+      "name": "Generate with Ollama",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data=$input.first().json;let postText='';try{postText=(data.message&&data.message.content)||'';}catch(e){}\nif(!postText)postText=JSON.stringify(data);return [{json:{postText}}];"
+      },
+      "id": "n-extract",
+      "name": "Extract Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "options": {},
+        "fromEmail": "you@example.com",
+        "toEmail": "={{ $json.to || 'list@example.com' }}",
+        "subject": "EDM",
+        "emailFormat": "text",
+        "text": "={{ $json.postText }}"
+      },
+      "id": "n-mail",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1120,
+        460
+      ]
+    }
+  ],
+  "connections": {
+    "When clicking Execute": {
+      "main": [
+        [
+          {
+            "node": "Input (edit me)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input (edit me)": {
+      "main": [
+        [
+          {
+            "node": "Generate with Ollama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate with Ollama": {
+      "main": [
+        [
+          {
+            "node": "Extract Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Text": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {},
+  "tags": []
+}

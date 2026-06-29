@@ -1,0 +1,91 @@
+{
+  "id": "WkWebhookViral91",
+  "name": "Webhook → 爆款貼文 API (Agent 可呼叫 · 本機 Ollama)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "🌉 橋接範本 · Agent Farm ↔ n8n\n\n這條是「橋 1」：任何程式（含 Claude agent）用 curl 打它，就觸發 n8n 生成、再把結果回傳。\n\n用法：\n1. 先按右上 Publish 啟用\n2. curl POST → http://localhost:5678/webhook/viral-post\n   body 帶 { \"topic\": \"你的主題\" }\n3. 回應就是生成好的爆款貼文\n\n詳細指令見 docs/91。",
+        "height": 320,
+        "width": 400,
+        "color": 6
+      },
+      "id": "node-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [180, 110]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "viral-post",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook",
+      "name": "Webhook (POST)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "webhookId": "viral-post-hook",
+      "position": [240, 470]
+    },
+    {
+      "parameters": {
+        "jsCode": "let b = $json.body;\nif (typeof b === 'string') { try { b = JSON.parse(b); } catch (e) { b = {}; } }\nb = b || {};\nconst topic = (b.topic || $json.topic || ($json.query && $json.query.topic) || '隨意寫一則範例貼文').toString();\nconst prompt = '你是社群內容寫手，擅長反主流框架的爆款貼文。根據主題，為 FB / IG / Threads 各寫一則草稿：反直覺鉤子開頭、第一人稱真實口語、結尾不釣互動、繁體中文全形標點。\\n\\n主題：\\n' + topic;\nreturn [{ json: { topic, prompt } }];"
+      },
+      "id": "node-prompt",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 470]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen2.5:latest', messages: [ { role: 'system', content: '你是台灣人，一律使用台灣繁體中文與台灣慣用語回覆，絕對不要出現任何簡體字或中國用語。' }, { role: 'user', content: $json.prompt } ], stream: false }) }}",
+        "options": { "timeout": 180000 }
+      },
+      "id": "node-ollama",
+      "name": "Generate with Ollama",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 470]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nlet result = '';\ntry { result = (data.message && data.message.content) || (data.content && data.content[0] && data.content[0].text) || data.response || ''; } catch (e) {}\nif (!result) result = JSON.stringify(data);\nreturn [{ json: { result } }];"
+      },
+      "id": "node-extract",
+      "name": "Extract Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 470]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.result }}",
+        "options": {}
+      },
+      "id": "node-respond",
+      "name": "Respond to Agent",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1120, 470]
+    }
+  ],
+  "connections": {
+    "Webhook (POST)": { "main": [ [ { "node": "Build Prompt", "type": "main", "index": 0 } ] ] },
+    "Build Prompt": { "main": [ [ { "node": "Generate with Ollama", "type": "main", "index": 0 } ] ] },
+    "Generate with Ollama": { "main": [ [ { "node": "Extract Result", "type": "main", "index": 0 } ] ] },
+    "Extract Result": { "main": [ [ { "node": "Respond to Agent", "type": "main", "index": 0 } ] ] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": {},
+  "tags": []
+}

@@ -1,0 +1,206 @@
+{
+  "id": "Gen73",
+  "name": "監測 Mobile01 討論（PTT 版）",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "n-sched",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const board='Tech_Job';const keyword='AI';\nconst url='https://www.ptt.cc/bbs/'+board+'/search?q='+encodeURIComponent(keyword);\nreturn [{json:{board,keyword,url}}];"
+      },
+      "id": "n-input",
+      "name": "Input (edit me)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "options": {},
+        "method": "GET",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "over18=1"
+            },
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+            }
+          ]
+        }
+      },
+      "id": "n-fetch",
+      "name": "Fetch PTT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const j=$input.first().json;const html=j.data||j.body||'';\nconst re=/<div class=\\x22title\\x22>\\s*<a href=\\x22([^\\x22]+)\\x22>([^<]+)<\\/a>/g;\nconst items=[];let m;while((m=re.exec(html))!==null){const t=m[2].replace(/&amp;/g,'&').trim();items.push(t);if(items.length>=20)break;}\nconst meta=$('Input (edit me)').first().json;\nconst list=items.map((n,i)=>(i+1)+'. '+n).join('\\n');\nconst prompt='你是輿情分析師。把以下論壇討論標題整理成輿情報告：1)重點 2)風向情緒 3)注意點（看板 '+meta.board+'、關鍵字 '+meta.keyword+'）\\n\\n'+(list||'（沒抓到標題，調整看板或關鍵字）');\nreturn [{json:{count:items.length,prompt}}];"
+      },
+      "id": "n-parse",
+      "name": "Parse PTT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "timeout": 180000
+        },
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen2.5:latest', messages: [ { role: 'system', content: '你是台灣人，一律使用台灣繁體中文與台灣慣用語回覆，絕對不要出現任何簡體字或中國用語。' }, { role: 'user', content: $json.prompt } ], stream: false }) }}"
+      },
+      "id": "n-ollama",
+      "name": "Summarize with Ollama",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nlet v = '';\ntry { v = (data.message && data.message.content) || (data.content && data.content[0] && data.content[0].text) || data.response || ''; } catch (e) {}\nif (!v) v = JSON.stringify(data);\nreturn [{ json: { summary: v } }];"
+      },
+      "id": "n-extract",
+      "name": "Extract Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "options": {},
+        "method": "POST",
+        "url": "https://discord.com/api/webhooks/REPLACE_WITH_YOUR_WEBHOOK_URL",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: ('🗣️ 監測 Mobile01 討論（PTT 版）\\n\\n' + ($json.summary || '')).slice(0, 1900) }) }}"
+      },
+      "id": "n-discord",
+      "name": "Send to Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1560,
+        460
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Input (edit me)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input (edit me)": {
+      "main": [
+        [
+          {
+            "node": "Fetch PTT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch PTT": {
+      "main": [
+        [
+          {
+            "node": "Parse PTT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse PTT": {
+      "main": [
+        [
+          {
+            "node": "Summarize with Ollama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize with Ollama": {
+      "main": [
+        [
+          {
+            "node": "Extract Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Result": {
+      "main": [
+        [
+          {
+            "node": "Send to Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {},
+  "tags": []
+}

@@ -77,6 +77,18 @@ The Taiwan e-invoice case (the v1.0 milestone case) is built on top of:
 
 ---
 
+## 5. `reference-workflows/_marketing-flows-yuri/` — YuriCrystal/n8n-marketing-flows
+
+A collection of 81 marketing-automation n8n workflow templates, imported as a
+reference corpus for `tigerai-example-finder`:
+
+- **Source**: https://github.com/YuriCrystal/n8n-marketing-flows
+- **License**: MIT License, Copyright (c) 2026 Yuri (@yuri.learns) — full text in [`reference-workflows/_marketing-flows-yuri/LICENSE.upstream`](reference-workflows/_marketing-flows-yuri/LICENSE.upstream)
+- **Attribution chain**: the `90-viral-social-post.*` templates' viral framework is itself credited to 駱君昊 (Hao)'s MIT skill (https://github.com/Hao0321/claude-skill-social-post) — see [`reference-workflows/_marketing-flows-yuri/CREDITS.md`](reference-workflows/_marketing-flows-yuri/CREDITS.md).
+- **Use in this repo**: Reference / language corpus only. The 59 `*.skeleton.json` templates were verified by the upstream author for **import + node-graph correctness only, not live API runs** — treat as architecture reference, **not deployable as-is**. See [`reference-workflows/_marketing-flows-yuri/README.md`](reference-workflows/_marketing-flows-yuri/README.md).
+
+---
+
 ## License of the rest
 
 The rest of this repository (TigerAI-authored skills, cookbook, specs,

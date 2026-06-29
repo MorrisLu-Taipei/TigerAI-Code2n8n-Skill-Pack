@@ -1,0 +1,194 @@
+{
+  "id": "GenC75",
+  "name": "監測 Threads 留言",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "⚠️ 架構範本（未接 key）\n\n填貼文/影片 ID + Access Token（讀留言）。\nFB/IG/Threads/YouTube/Google商家 同架構換 endpoint。\n語意判斷+回覆建議(Ollama)+推 Discord 免費；webhook 要貼。",
+        "height": 320,
+        "width": 380,
+        "color": 4
+      },
+      "id": "n-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        180,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 */6 * * *"
+            }
+          ]
+        }
+      },
+      "id": "n-sched",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "options": {},
+        "method": "GET",
+        "url": "https://graph.facebook.com/v21.0/YOUR_POST_ID/comments?fields=from,message,created_time",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "access_token",
+              "value": "YOUR_ACCESS_TOKEN"
+            }
+          ]
+        }
+      },
+      "id": "n-fetch",
+      "name": "Fetch (API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=JSON.stringify($input.first().json).slice(0,3000);\nconst prompt='以下是留言（JSON）。請用繁中：1)判斷每則語意 2)給可微調使用的回覆建議。\\n\\n'+d;\nreturn [{json:{prompt}}];"
+      },
+      "id": "n-prep",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "timeout": 180000
+        },
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen2.5:latest', messages: [ { role: 'system', content: '你是台灣人，一律使用台灣繁體中文與台灣慣用語回覆，絕對不要出現任何簡體字或中國用語。' }, { role: 'user', content: $json.prompt } ], stream: false }) }}"
+      },
+      "id": "n-ollama",
+      "name": "Summarize with Ollama",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nlet v = '';\ntry { v = (data.message && data.message.content) || (data.content && data.content[0] && data.content[0].text) || data.response || ''; } catch (e) {}\nif (!v) v = JSON.stringify(data);\nreturn [{ json: { summary: v } }];"
+      },
+      "id": "n-extract",
+      "name": "Extract Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "options": {},
+        "method": "POST",
+        "url": "https://discord.com/api/webhooks/REPLACE_WITH_YOUR_WEBHOOK_URL",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: ('💬 監測 Threads 留言\\n\\n' + ($json.summary || '')).slice(0, 1900) }) }}"
+      },
+      "id": "n-discord",
+      "name": "Send to Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1340,
+        460
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch (API)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch (API)": {
+      "main": [
+        [
+          {
+            "node": "Build Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Prompt": {
+      "main": [
+        [
+          {
+            "node": "Summarize with Ollama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize with Ollama": {
+      "main": [
+        [
+          {
+            "node": "Extract Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Result": {
+      "main": [
+        [
+          {
+            "node": "Send to Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {},
+  "tags": []
+}

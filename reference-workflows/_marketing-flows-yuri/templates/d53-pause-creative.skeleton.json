@@ -1,0 +1,149 @@
+{
+  "id": "GenD53",
+  "name": "暫停表現不佳的廣告素材",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "⚠️ 架構範本（未接 key）\n\n需 Meta Marketing API：act_XXXX + Token（ads_management）。\nDecide 為門檻邏輯範例，可改條件。動作節點會改廣告狀態/預算。\n沒 key 不會動到你的廣告。",
+        "height": 320,
+        "width": 380,
+        "color": 4
+      },
+      "id": "n-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        180,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "n-sched",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "options": {},
+        "method": "GET",
+        "url": "https://graph.facebook.com/v21.0/act_YOUR_AD_ACCOUNT/insights?fields=adset_id,ctr,cpc,spend&level=adset",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "access_token",
+              "value": "YOUR_ACCESS_TOKEN"
+            }
+          ]
+        }
+      },
+      "id": "n-fetch",
+      "name": "Fetch Ad Insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows=$input.all().map(i=>i.json);const T=1.0;\nconst hit=rows.filter(r=>parseFloat(r.ctr||0)<T);\nreturn hit.length?hit.map(r=>({json:r})):[{json:{adset_id:'',note:'共'+rows.length+'筆'}}];"
+      },
+      "id": "n-decide",
+      "name": "Decide (threshold)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "options": {},
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.adset_id || 'YOUR_ADSET_ID' }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "PAUSED"
+            },
+            {
+              "name": "access_token",
+              "value": "YOUR_ACCESS_TOKEN"
+            }
+          ]
+        }
+      },
+      "id": "n-act",
+      "name": "Pause Creative",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        460
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Ad Insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Ad Insights": {
+      "main": [
+        [
+          {
+            "node": "Decide (threshold)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide (threshold)": {
+      "main": [
+        [
+          {
+            "node": "Pause Creative",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {},
+  "tags": []
+}

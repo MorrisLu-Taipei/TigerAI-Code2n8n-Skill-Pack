@@ -1,0 +1,159 @@
+{
+  "id": "ArchSocialPub01",
+  "name": "【架構範本】AI 生成貼文 → 發布社群 Meta (未接 key)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "⚠️ 這是「架構範本」，未接任何 API key。\n\n要實際運作，請在「Post to Facebook」節點填入：\n• 你的 Facebook Page ID\n• Page Access Token（Meta 開發者後台取得）\n\nIG / Threads 同一個架構，只是把 Graph API endpoint 換成對應的即可。\n\n生成文案的部分（Ollama）是免費本機的，已可運作。",
+        "height": 320,
+        "width": 380,
+        "color": 4
+      },
+      "id": "node-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        200,
+        120
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "node-manual",
+      "name": "When clicking Execute",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const topic = '（換成你的貼文主題或素材）';\nconst prompt = '你是社群小編。根據以下主題寫一則 Facebook 貼文（繁體中文、3-5 句、口語、自然、結尾不要釣互動）：\\n\\n主題：' + topic;\nreturn [{ json: { topic, prompt } }];"
+      },
+      "id": "node-input",
+      "name": "Input (edit me)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen2.5:latest', messages: [ { role: 'system', content: '你是台灣人，一律使用台灣繁體中文與台灣慣用語回覆，絕對不要出現任何簡體字或中國用語。' }, { role: 'user', content: $json.prompt } ], stream: false }) }}",
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "id": "node-ollama",
+      "name": "Generate with Ollama",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nlet postText = '';\ntry { postText = (data.message && data.message.content) || ''; } catch (e) {}\nif (!postText) postText = JSON.stringify(data);\nreturn [{ json: { postText } }];"
+      },
+      "id": "node-extract",
+      "name": "Extract Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/YOUR_PAGE_ID/feed",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "access_token",
+              "value": "YOUR_PAGE_ACCESS_TOKEN"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: $json.postText }) }}",
+        "options": {}
+      },
+      "id": "node-fb",
+      "name": "Post to Facebook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        460
+      ]
+    }
+  ],
+  "connections": {
+    "When clicking Execute": {
+      "main": [
+        [
+          {
+            "node": "Input (edit me)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input (edit me)": {
+      "main": [
+        [
+          {
+            "node": "Generate with Ollama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate with Ollama": {
+      "main": [
+        [
+          {
+            "node": "Extract Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Text": {
+      "main": [
+        [
+          {
+            "node": "Post to Facebook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {},
+  "tags": []
+}

@@ -1,0 +1,63 @@
+{
+  "id": "ArchSheets05",
+  "name": "【架構範本】資料匯出 Google Sheets (未接 key)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "⚠️ 架構範本（未接 key）\n\n生產強烈建議：用 n8n 內建「Google Sheets」節點 + Google OAuth 憑證（最省事）。\n這裡用 HTTP 示意架構：Sheets API 需要 OAuth Bearer token，填 Sheet ID + token 才會動。\n\n前面的「Prepare Data」可換成任何資料來源。",
+        "height": 300,
+        "width": 380,
+        "color": 4
+      },
+      "id": "node-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [180, 120]
+    },
+    {
+      "parameters": {},
+      "id": "node-manual",
+      "name": "When clicking Execute",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 460]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 換成你的資料來源；這裡放一筆示意資料\nreturn [{ json: { date: '2026-06-25', metric: 'example_metric', value: 123 } }];"
+      },
+      "id": "node-prepare",
+      "name": "Prepare Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 460]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/YOUR_SHEET_ID/values/A1:append?valueInputOption=RAW",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [ { "name": "Authorization", "value": "Bearer YOUR_OAUTH_TOKEN" } ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ values: [ [ $json.date, $json.metric, $json.value ] ] }) }}",
+        "options": {}
+      },
+      "id": "node-append",
+      "name": "Append to Google Sheets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 460]
+    }
+  ],
+  "connections": {
+    "When clicking Execute": { "main": [ [ { "node": "Prepare Data", "type": "main", "index": 0 } ] ] },
+    "Prepare Data": { "main": [ [ { "node": "Append to Google Sheets", "type": "main", "index": 0 } ] ] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": {},
+  "tags": []
+}

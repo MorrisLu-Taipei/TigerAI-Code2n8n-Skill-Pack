@@ -1,0 +1,121 @@
+{
+  "id": "WkViralPost90",
+  "name": "爆款社群貼文產生器 (Viral Social Post · 本機 Ollama)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "📣 方法論致謝 / Credits\n\n本模板的「反主流鉤子 / 集體同學感 / 真實 voice / 不釣互動」爆款框架，方法論源自 駱君昊 (Hao) 的開源 Claude skill（MIT）：\nhttps://github.com/Hao0321/claude-skill-social-post\n\n本模板為獨立改寫，未複製其原文。\n\n⚠️ 只生成草稿，發布前請自己過目。\n要自動發布 → 改接 p02 發布社群骨架（需 Meta key）。",
+        "height": 340,
+        "width": 400,
+        "color": 6
+      },
+      "id": "node-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        180,
+        100
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "node-manual",
+      "name": "When clicking Execute",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const topic = '（把這裡換成你的主題、新聞、或想分享的點子）';\nconst prompt = '你是社群內容寫手，擅長「反主流框架」的爆款貼文。根據以下主題，為三個平台各寫一則貼文草稿。規則：\\n1. 開頭用反直覺／反主流的鉤子（打破一個大家以為對的觀念），不要用「你知道嗎」這種老套開場。\\n2. 用第一人稱、真實口語、講自己的經驗或脆弱；不要 AI 腔、不要空泛形容詞。\\n3. 製造「同溫層／一起學」的集體感，不要高高在上教學。\\n4. 結尾用觀點或個人狀態收尾，不要釣互動（不要「你們覺得呢」「歡迎留言」「有人試過嗎」）。\\n5. 一律用台灣繁體中文與台灣用語，絕對不要出現任何簡體字、不要中國用語；全形標點。\\n\\n平台格式：\\nFB（完整、可帶觀點，5-8 句）\\nIG（圖文，3-5 句、適度換行）\\nThreads（短、口語、1-2 句鉤子）\\n\\n主題：\\n' + topic;\nreturn [{ json: { topic, prompt } }];"
+      },
+      "id": "node-input",
+      "name": "Input (edit me)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen2.5:latest', messages: [ { role: 'system', content: '你是台灣人，一律使用台灣繁體中文與台灣慣用語回覆，絕對不要出現任何簡體字或中國用語。' }, { role: 'user', content: $json.prompt } ], stream: false }) }}",
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "id": "node-ollama",
+      "name": "Summarize with Ollama",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nlet out = '';\ntry { out = (data.message && data.message.content) || (data.content && data.content[0] && data.content[0].text) || data.response || ''; } catch (e) {}\nif (!out) out = JSON.stringify(data);\nreturn [{ json: { result: out } }];"
+      },
+      "id": "node-result",
+      "name": "Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        480
+      ]
+    }
+  ],
+  "connections": {
+    "When clicking Execute": {
+      "main": [
+        [
+          {
+            "node": "Input (edit me)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input (edit me)": {
+      "main": [
+        [
+          {
+            "node": "Summarize with Ollama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize with Ollama": {
+      "main": [
+        [
+          {
+            "node": "Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {},
+  "tags": []
+}
